@@ -1,0 +1,636 @@
+{
+  "users": [
+    {
+      "id": "usr-warden-1",
+      "email": "warden@hostelsync.edu",
+      "password_hash": "admin123",
+      "full_name": "Dr. Robert Vance",
+      "role": "warden",
+      "phone": "+1 (555) 234-5678",
+      "created_at": "2026-01-10T08:00:00Z"
+    },
+    {
+      "id": "usr-student-1",
+      "email": "student@hostelsync.edu",
+      "password_hash": "student123",
+      "full_name": "Alex Morgan",
+      "role": "student",
+      "phone": "+1 (555) 345-6789",
+      "created_at": "2026-08-01T10:00:00Z"
+    },
+    {
+      "id": "usr-student-2",
+      "email": "priya@hostelsync.edu",
+      "password_hash": "student123",
+      "full_name": "Priya Sharma",
+      "role": "student",
+      "phone": "+1 (555) 456-7890",
+      "created_at": "2026-08-01T10:30:00Z"
+    },
+    {
+      "id": "usr-student-3",
+      "email": "marcus@hostelsync.edu",
+      "password_hash": "student123",
+      "full_name": "Marcus Chen",
+      "role": "student",
+      "phone": "+1 (555) 567-8901",
+      "created_at": "2026-08-02T11:00:00Z"
+    },
+    {
+      "id": "usr-student-4",
+      "email": "sarah@hostelsync.edu",
+      "password_hash": "student123",
+      "full_name": "Sarah Jenkins",
+      "role": "student",
+      "phone": "+1 (555) 678-9012",
+      "created_at": "2026-08-02T11:30:00Z"
+    },
+    {
+      "id": "usr-student-5",
+      "email": "liam@hostelsync.edu",
+      "password_hash": "student123",
+      "full_name": "Liam O’Connor",
+      "role": "student",
+      "phone": "+1 (555) 789-0123",
+      "created_at": "2026-08-03T09:00:00Z"
+    },
+    {
+      "id": "usr-staff-1",
+      "email": "staff@hostelsync.edu",
+      "password_hash": "staff123",
+      "full_name": "David Miller",
+      "role": "staff",
+      "phone": "+1 (555) 890-1234",
+      "created_at": "2026-02-15T08:00:00Z"
+    },
+    {
+      "id": "usr-staff-2",
+      "email": "carlos@hostelsync.edu",
+      "password_hash": "staff123",
+      "full_name": "Carlos Mendez",
+      "role": "staff",
+      "phone": "+1 (555) 901-2345",
+      "created_at": "2026-02-16T08:00:00Z"
+    },
+    {
+      "id": "usr-staff-3",
+      "email": "anita@hostelsync.edu",
+      "password_hash": "staff123",
+      "full_name": "Anita Roy",
+      "role": "staff",
+      "phone": "+1 (555) 012-3456",
+      "created_at": "2026-03-01T08:00:00Z"
+    },
+    {
+      "id": "usr-1791701917092",
+      "email": "teststudent@example.com",
+      "password_hash": "testpass123",
+      "full_name": "Test Student",
+      "role": "student",
+      "phone": "",
+      "created_at": "2026-10-11T06:58:37.092Z"
+    }
+  ],
+  "rooms": [
+    {
+      "id": "rm-101",
+      "room_number": "A-101",
+      "hostel_name": "Horizon Hall",
+      "block": "Block A",
+      "floor": 1,
+      "capacity": 2,
+      "type": "Standard Double (Non-AC)",
+      "status": "full",
+      "amenities": [
+        "High-speed Wi-Fi",
+        "Study Tables",
+        "Attached Balcony",
+        "Wardrobes"
+      ]
+    },
+    {
+      "id": "rm-102",
+      "room_number": "A-102",
+      "hostel_name": "Horizon Hall",
+      "block": "Block A",
+      "floor": 1,
+      "capacity": 2,
+      "type": "Standard Double (Non-AC)",
+      "status": "partially_occupied",
+      "amenities": [
+        "High-speed Wi-Fi",
+        "Study Tables",
+        "Attached Balcony"
+      ]
+    },
+    {
+      "id": "rm-201",
+      "room_number": "A-201",
+      "hostel_name": "Horizon Hall",
+      "block": "Block A",
+      "floor": 2,
+      "capacity": 3,
+      "type": "Deluxe Triple (AC)",
+      "status": "partially_occupied",
+      "amenities": [
+        "Air Conditioning",
+        "High-speed Wi-Fi",
+        "Attached Bathroom",
+        "Smart Desk"
+      ]
+    },
+    {
+      "id": "rm-204",
+      "room_number": "A-204",
+      "hostel_name": "Horizon Hall",
+      "block": "Block A",
+      "floor": 2,
+      "capacity": 2,
+      "type": "Deluxe Double (AC)",
+      "status": "full",
+      "amenities": [
+        "Air Conditioning",
+        "High-speed Wi-Fi",
+        "Attached Bathroom",
+        "Balcony"
+      ]
+    },
+    {
+      "id": "rm-301",
+      "room_number": "B-101",
+      "hostel_name": "Pinnacle Tower",
+      "block": "Block B",
+      "floor": 1,
+      "capacity": 2,
+      "type": "Standard Double (Non-AC)",
+      "status": "available",
+      "amenities": [
+        "High-speed Wi-Fi",
+        "Study Tables",
+        "Ceiling Fan"
+      ]
+    },
+    {
+      "id": "rm-302",
+      "room_number": "B-102",
+      "hostel_name": "Pinnacle Tower",
+      "block": "Block B",
+      "floor": 1,
+      "capacity": 2,
+      "type": "Standard Double (Non-AC)",
+      "status": "partially_occupied",
+      "amenities": [
+        "High-speed Wi-Fi",
+        "Study Tables",
+        "Garden View"
+      ]
+    },
+    {
+      "id": "rm-303",
+      "room_number": "B-201",
+      "hostel_name": "Pinnacle Tower",
+      "block": "Block B",
+      "floor": 2,
+      "capacity": 4,
+      "type": "Dorm Quad (Non-AC)",
+      "status": "maintenance",
+      "amenities": [
+        "Wi-Fi",
+        "Lockers",
+        "Bunk Beds"
+      ]
+    },
+    {
+      "id": "rm-304",
+      "room_number": "B-202",
+      "hostel_name": "Pinnacle Tower",
+      "block": "Block B",
+      "floor": 2,
+      "capacity": 2,
+      "type": "Deluxe Double (AC)",
+      "status": "available",
+      "amenities": [
+        "Air Conditioning",
+        "Wi-Fi",
+        "Attached Washroom"
+      ]
+    }
+  ],
+  "students": [
+    {
+      "id": "std-1",
+      "user_id": "usr-student-1",
+      "full_name": "Alex Morgan",
+      "email": "student@hostelsync.edu",
+      "enrollment_no": "CS-2023-042",
+      "department": "Computer Science & Engineering",
+      "year_of_study": 3,
+      "gender": "Male",
+      "emergency_contact": "+1 (555) 987-6543 (Parent)",
+      "blood_group": "O+",
+      "room_id": "rm-204",
+      "hostel_name": "Horizon Hall",
+      "created_at": "2026-08-01T10:00:00Z"
+    },
+    {
+      "id": "std-2",
+      "user_id": "usr-student-2",
+      "full_name": "Priya Sharma",
+      "email": "priya@hostelsync.edu",
+      "enrollment_no": "EE-2024-118",
+      "department": "Electrical Engineering",
+      "year_of_study": 2,
+      "gender": "Female",
+      "emergency_contact": "+1 (555) 876-5432 (Guardian)",
+      "blood_group": "B+",
+      "room_id": "rm-302",
+      "hostel_name": "Pinnacle Tower",
+      "created_at": "2026-08-01T10:30:00Z"
+    },
+    {
+      "id": "std-3",
+      "user_id": "usr-student-3",
+      "full_name": "Marcus Chen",
+      "email": "marcus@hostelsync.edu",
+      "enrollment_no": "ME-2023-089",
+      "department": "Mechanical Engineering",
+      "year_of_study": 3,
+      "gender": "Male",
+      "emergency_contact": "+1 (555) 765-4321 (Parent)",
+      "blood_group": "A+",
+      "room_id": "rm-204",
+      "hostel_name": "Horizon Hall",
+      "created_at": "2026-08-02T11:00:00Z"
+    },
+    {
+      "id": "std-4",
+      "user_id": "usr-student-4",
+      "full_name": "Sarah Jenkins",
+      "email": "sarah@hostelsync.edu",
+      "enrollment_no": "BIO-2025-015",
+      "department": "Biotechnology",
+      "year_of_study": 1,
+      "gender": "Female",
+      "emergency_contact": "+1 (555) 654-3210 (Mother)",
+      "blood_group": "AB+",
+      "room_id": "rm-101",
+      "hostel_name": "Horizon Hall",
+      "created_at": "2026-08-02T11:30:00Z"
+    },
+    {
+      "id": "std-5",
+      "user_id": "usr-student-5",
+      "full_name": "Liam O’Connor",
+      "email": "liam@hostelsync.edu",
+      "enrollment_no": "CS-2024-077",
+      "department": "Computer Science",
+      "year_of_study": 2,
+      "gender": "Male",
+      "emergency_contact": "+1 (555) 543-2109 (Father)",
+      "blood_group": "O-",
+      "room_id": "rm-101",
+      "hostel_name": "Horizon Hall",
+      "created_at": "2026-08-03T09:00:00Z"
+    },
+    {
+      "id": "std-1791701917092",
+      "user_id": "usr-1791701917092",
+      "full_name": "Test Student",
+      "email": "teststudent@example.com",
+      "enrollment_no": "STU-999",
+      "department": "Computer Science & Engineering",
+      "year_of_study": 1,
+      "gender": "Male",
+      "emergency_contact": "",
+      "blood_group": "Unknown",
+      "room_id": null,
+      "hostel_name": "Horizon Hall",
+      "created_at": "2026-10-11T06:58:37.092Z"
+    }
+  ],
+  "staffMembers": [
+    {
+      "id": "stf-1",
+      "user_id": "usr-staff-1",
+      "full_name": "David Miller",
+      "email": "staff@hostelsync.edu",
+      "employee_id": "EMP-ELEC-04",
+      "specialization": "Electrical & AC Maintenance",
+      "phone": "+1 (555) 890-1234",
+      "status": "available"
+    },
+    {
+      "id": "stf-2",
+      "user_id": "usr-staff-2",
+      "full_name": "Carlos Mendez",
+      "email": "carlos@hostelsync.edu",
+      "employee_id": "EMP-PLUM-02",
+      "specialization": "Plumbing & Drainage",
+      "phone": "+1 (555) 901-2345",
+      "status": "busy"
+    },
+    {
+      "id": "stf-3",
+      "user_id": "usr-staff-3",
+      "full_name": "Anita Roy",
+      "email": "anita@hostelsync.edu",
+      "employee_id": "EMP-CARP-08",
+      "specialization": "Carpentry & Furniture",
+      "phone": "+1 (555) 012-3456",
+      "status": "available"
+    }
+  ],
+  "allocations": [
+    {
+      "id": "alc-1",
+      "student_id": "std-1",
+      "room_id": "rm-204",
+      "allocated_by": "usr-warden-1",
+      "allocation_date": "2026-08-10",
+      "status": "active",
+      "notes": "Allocated for Academic Year 2026-27"
+    },
+    {
+      "id": "alc-2",
+      "student_id": "std-3",
+      "room_id": "rm-204",
+      "allocated_by": "usr-warden-1",
+      "allocation_date": "2026-08-10",
+      "status": "active",
+      "notes": "Allocated for Academic Year 2026-27"
+    },
+    {
+      "id": "alc-3",
+      "student_id": "std-2",
+      "room_id": "rm-302",
+      "allocated_by": "usr-warden-1",
+      "allocation_date": "2026-08-12",
+      "status": "active"
+    },
+    {
+      "id": "alc-4",
+      "student_id": "std-4",
+      "room_id": "rm-101",
+      "allocated_by": "usr-warden-1",
+      "allocation_date": "2026-08-15",
+      "status": "active"
+    },
+    {
+      "id": "alc-5",
+      "student_id": "std-5",
+      "room_id": "rm-101",
+      "allocated_by": "usr-warden-1",
+      "allocation_date": "2026-08-15",
+      "status": "active"
+    }
+  ],
+  "complaints": [
+    {
+      "id": "cmp-1",
+      "complaint_code": "CMP-2026-001",
+      "student_id": "std-1",
+      "student_name": "Alex Morgan",
+      "room_id": "rm-204",
+      "room_number": "A-204",
+      "category": "Electrical",
+      "title": "Ceiling fan making clicking noise on high speeds",
+      "description": "The ceiling fan regulator vibrates heavily and produces clicking sound on speeds 4 and 5.",
+      "priority": "medium",
+      "status": "assigned",
+      "assigned_to": "stf-1",
+      "assigned_to_name": "David Miller",
+      "assigned_at": "2026-10-02T14:30:00Z",
+      "resolved_at": null,
+      "resolution_notes": null,
+      "created_at": "2026-10-02T10:15:00Z",
+      "updated_at": "2026-10-02T14:30:00Z"
+    },
+    {
+      "id": "cmp-2",
+      "complaint_code": "CMP-2026-002",
+      "student_id": "std-2",
+      "student_name": "Priya Sharma",
+      "room_id": "rm-302",
+      "room_number": "B-102",
+      "category": "Plumbing",
+      "title": "Water tap leaking continuously in washroom",
+      "description": "Hot water faucet handle is loose and water drips approximately 2 liters per hour.",
+      "priority": "high",
+      "status": "in_progress",
+      "assigned_to": "stf-2",
+      "assigned_to_name": "Carlos Mendez",
+      "assigned_at": "2026-10-03T09:00:00Z",
+      "resolved_at": null,
+      "resolution_notes": "Inspected washer. Sourcing 1/2-inch brass cartridge from central store.",
+      "created_at": "2026-10-03T08:00:00Z",
+      "updated_at": "2026-10-03T11:20:00Z"
+    },
+    {
+      "id": "cmp-3",
+      "complaint_code": "CMP-2026-003",
+      "student_id": "std-3",
+      "student_name": "Marcus Chen",
+      "room_id": "rm-204",
+      "room_number": "A-204",
+      "category": "Wi-Fi/Internet",
+      "title": "LAN port 2 connectivity intermittent",
+      "description": "The RJ45 ethernet socket near desk 2 keeps dropping connection every 10 minutes.",
+      "priority": "low",
+      "status": "pending",
+      "assigned_to": null,
+      "assigned_to_name": null,
+      "assigned_at": null,
+      "resolved_at": null,
+      "resolution_notes": null,
+      "created_at": "2026-10-04T07:45:00Z",
+      "updated_at": "2026-10-04T07:45:00Z"
+    },
+    {
+      "id": "cmp-4",
+      "complaint_code": "CMP-2026-004",
+      "student_id": "std-1",
+      "student_name": "Alex Morgan",
+      "room_id": "rm-204",
+      "room_number": "A-204",
+      "category": "Carpentry",
+      "title": "Study wardrobe hinge loose",
+      "description": "Right door hinge screws stripped out of the wooden frame.",
+      "priority": "low",
+      "status": "resolved",
+      "assigned_to": "stf-3",
+      "assigned_to_name": "Anita Roy",
+      "assigned_at": "2026-09-25T11:00:00Z",
+      "resolved_at": "2026-09-26T15:30:00Z",
+      "resolution_notes": "Replaced hydraulic hinge with heavy duty stainless screws and tested alignment.",
+      "created_at": "2026-09-25T09:20:00Z",
+      "updated_at": "2026-09-26T15:30:00Z"
+    }
+  ],
+  "visitors": [
+    {
+      "id": "vis-1",
+      "student_id": "std-1",
+      "student_name": "Alex Morgan",
+      "room_number": "A-204",
+      "visitor_name": "Thomas Morgan",
+      "phone_number": "+1 (555) 789-4321",
+      "relationship": "Parent",
+      "visit_date": "2026-10-06",
+      "entry_time": "14:00",
+      "expected_exit_time": "18:00",
+      "actual_exit_time": null,
+      "purpose": "Semester fee discussion and bringing winter clothes",
+      "status": "approved",
+      "approved_by": "usr-warden-1",
+      "rejection_reason": null,
+      "created_at": "2026-10-03T16:00:00Z"
+    },
+    {
+      "id": "vis-2",
+      "student_id": "std-2",
+      "student_name": "Priya Sharma",
+      "room_number": "B-102",
+      "visitor_name": "Sunita Sharma",
+      "phone_number": "+1 (555) 890-5432",
+      "relationship": "Mother",
+      "visit_date": "2026-10-07",
+      "entry_time": "11:00",
+      "expected_exit_time": "16:00",
+      "actual_exit_time": null,
+      "purpose": "Family visit during festive weekend",
+      "status": "pending",
+      "approved_by": null,
+      "rejection_reason": null,
+      "created_at": "2026-10-04T12:00:00Z"
+    },
+    {
+      "id": "vis-3",
+      "student_id": "std-3",
+      "student_name": "Marcus Chen",
+      "room_number": "A-204",
+      "visitor_name": "Kevin Zhao",
+      "phone_number": "+1 (555) 901-6543",
+      "relationship": "Friend",
+      "visit_date": "2026-10-01",
+      "entry_time": "16:00",
+      "expected_exit_time": "19:00",
+      "actual_exit_time": "18:45",
+      "purpose": "Project collaboration",
+      "status": "completed",
+      "approved_by": "usr-warden-1",
+      "rejection_reason": null,
+      "created_at": "2026-09-30T10:00:00Z"
+    }
+  ],
+  "notices": [
+    {
+      "id": "not-1",
+      "title": "Water Supply Maintenance Schedule - Blocks A & B",
+      "content": "Routine overhead tank cleaning and chlorination will occur on Wednesday, 10:00 AM to 02:00 PM. Please store sufficient drinking water in advance.",
+      "category": "Maintenance",
+      "priority": "urgent",
+      "target_audience": "all",
+      "published_by_name": "Dr. Robert Vance (Chief Warden)",
+      "is_published": true,
+      "created_at": "2026-10-03T09:00:00Z"
+    },
+    {
+      "id": "not-2",
+      "title": "Hostel Night & Cultural Festival Registrations",
+      "content": "Annual inter-hostel cultural competition entries are now open! Sign up at the warden office or through your floor representative before Oct 15.",
+      "category": "Events",
+      "priority": "normal",
+      "target_audience": "students",
+      "published_by_name": "Dr. Robert Vance (Chief Warden)",
+      "is_published": true,
+      "created_at": "2026-10-01T14:30:00Z"
+    },
+    {
+      "id": "not-3",
+      "title": "Strict Adherence to Night Curfew (10:30 PM)",
+      "content": "All residents are reminded that main biometric gates lock at 10:30 PM sharp. Prior written gate passes are mandatory for late academic library passes.",
+      "category": "Rules & Regulations",
+      "priority": "important",
+      "target_audience": "all",
+      "published_by_name": "Hostel Administration",
+      "is_published": true,
+      "created_at": "2026-09-28T08:00:00Z"
+    }
+  ],
+  "messFeedbackList": [
+    {
+      "id": "fb-1",
+      "student_id": "std-1",
+      "student_name": "Alex Morgan",
+      "meal_type": "dinner",
+      "rating": 4,
+      "hygiene_rating": 5,
+      "taste_rating": 4,
+      "comments": "Paneer butter masala and fresh rotis were great. Salad counter was well replenished.",
+      "date": "2026-10-03",
+      "created_at": "2026-10-03T21:10:00Z"
+    },
+    {
+      "id": "fb-2",
+      "student_id": "std-2",
+      "student_name": "Priya Sharma",
+      "meal_type": "breakfast",
+      "rating": 3,
+      "hygiene_rating": 4,
+      "taste_rating": 3,
+      "comments": "Idlis were a bit cold by 8:30 AM. Sambhar tasted good.",
+      "date": "2026-10-04",
+      "created_at": "2026-10-04T09:05:00Z"
+    },
+    {
+      "id": "fb-3",
+      "student_id": "std-3",
+      "student_name": "Marcus Chen",
+      "meal_type": "lunch",
+      "rating": 5,
+      "hygiene_rating": 5,
+      "taste_rating": 5,
+      "comments": "Excellent festive meal menu with sweet dessert!",
+      "date": "2026-10-02",
+      "created_at": "2026-10-02T13:45:00Z"
+    }
+  ],
+  "notifications": [
+    {
+      "id": "ntf-1",
+      "user_id": "usr-student-1",
+      "title": "Complaint Assigned",
+      "message": "Your complaint CMP-2026-001 has been assigned to David Miller (Electrical).",
+      "type": "complaint_update",
+      "is_read": false,
+      "created_at": "2026-10-02T14:30:00Z"
+    },
+    {
+      "id": "ntf-2",
+      "user_id": "usr-student-1",
+      "title": "Visitor Request Approved",
+      "message": "Your visitor request for Thomas Morgan on 2026-10-06 has been approved by the Warden.",
+      "type": "visitor_status",
+      "is_read": true,
+      "created_at": "2026-10-03T16:05:00Z"
+    },
+    {
+      "id": "ntf-3",
+      "user_id": "usr-staff-1",
+      "title": "New Maintenance Task Assigned",
+      "message": "New complaint CMP-2026-001 assigned to you: Ceiling fan issue in Room A-204.",
+      "type": "complaint_update",
+      "is_read": false,
+      "created_at": "2026-10-02T14:30:00Z"
+    },
+    {
+      "id": "ntf-4",
+      "user_id": "usr-warden-1",
+      "title": "New Visitor Request Pending",
+      "message": "Priya Sharma registered a visitor request for Sunita Sharma.",
+      "type": "visitor_status",
+      "is_read": false,
+      "created_at": "2026-10-04T12:00:00Z"
+    }
+  ]
+}

@@ -9,10 +9,8 @@ interface AuthContextType {
   staffProfile: StaffProfile | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  registerStudent: (data: any) => Promise<void>;
+  register: (data: any) => Promise<void>;
   logout: () => void;
-  switchDemoRole: (role: 'warden' | 'student' | 'staff', subOption?: string) => Promise<void>;
-  automateRegisterAndLogin: (options?: { autoAllocateRoom?: boolean }) => Promise<any>;
   refreshProfile: () => Promise<void>;
 }
 
@@ -25,7 +23,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [staffProfile, setStaffProfile] = useState<StaffProfile | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Restore saved session on load or auto-login with default Warden role
+  // Restore saved session on load
   useEffect(() => {
     const savedToken = localStorage.getItem('hostelsync_token');
     const savedUser = localStorage.getItem('hostelsync_user');
@@ -42,13 +40,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error('Failed to parse cached session', err);
         localStorage.clear();
       }
-      setIsLoading(false);
-    } else {
-      // Default to Warden Demo account for initial review
-      switchDemoRole('warden').finally(() => {
-        setIsLoading(false);
-      });
     }
+    // Cleanly complete loading state without forcing any hardcoded mock account
+    setIsLoading(false);
   }, []);
 
   const login = async (email: string, password: string) => {
@@ -77,19 +71,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const registerStudent = async (formData: any) => {
+  const register = async (formData: any) => {
     setIsLoading(true);
     try {
       const data = await api.register(formData);
       setToken(data.token);
       setUser(data.user);
       setStudentProfile(data.studentProfile || null);
-      setStaffProfile(null);
+      setStaffProfile(data.staffProfile || null);
 
       localStorage.setItem('hostelsync_token', data.token);
       localStorage.setItem('hostelsync_user', JSON.stringify(data.user));
       if (data.studentProfile) {
         localStorage.setItem('hostelsync_student', JSON.stringify(data.studentProfile));
+      } else {
+        localStorage.removeItem('hostelsync_student');
+      }
+      if (data.staffProfile) {
+        localStorage.setItem('hostelsync_staff', JSON.stringify(data.staffProfile));
+      } else {
+        localStorage.removeItem('hostelsync_staff');
       }
     } finally {
       setIsLoading(false);
@@ -106,45 +107,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('hostelsync_user');
     localStorage.removeItem('hostelsync_student');
     localStorage.removeItem('hostelsync_staff');
-  };
-
-  const switchDemoRole = async (role: 'warden' | 'student' | 'staff', subOption?: string) => {
-    setIsLoading(true);
-    try {
-      if (role === 'warden') {
-        await login('warden@hostelsync.edu', 'admin123');
-      } else if (role === 'student') {
-        const studentEmail = subOption === 'priya' ? 'priya@hostelsync.edu' : 'student@hostelsync.edu';
-        await login(studentEmail, 'student123');
-      } else if (role === 'staff') {
-        const staffEmail = subOption === 'carlos' ? 'carlos@hostelsync.edu' : 'staff@hostelsync.edu';
-        await login(staffEmail, 'staff123');
-      }
-    } catch (err) {
-      console.error('Demo switch error', err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const automateRegisterAndLogin = async (options?: { autoAllocateRoom?: boolean }) => {
-    setIsLoading(true);
-    try {
-      const data = await api.automateRegister({ count: 1, role: 'student', autoAllocateRoom: options?.autoAllocateRoom ?? true });
-      setToken(data.token);
-      setUser(data.user);
-      setStudentProfile(data.studentProfile || null);
-      setStaffProfile(null);
-
-      localStorage.setItem('hostelsync_token', data.token);
-      localStorage.setItem('hostelsync_user', JSON.stringify(data.user));
-      if (data.studentProfile) {
-        localStorage.setItem('hostelsync_student', JSON.stringify(data.studentProfile));
-      }
-      return data;
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   const refreshProfile = async () => {
@@ -169,10 +131,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         staffProfile,
         isLoading,
         login,
-        registerStudent,
+        register,
         logout,
-        switchDemoRole,
-        automateRegisterAndLogin,
         refreshProfile,
       }}
     >

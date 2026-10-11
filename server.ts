@@ -730,6 +730,80 @@ const notifications: NotificationItem[] = [
   }
 ];
 
+// Persistent JSON Storage
+const DB_FILE = path.resolve(process.cwd(), 'database', 'store.json');
+
+function saveStore() {
+  try {
+    const dir = path.dirname(DB_FILE);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    const data = {
+      users,
+      rooms,
+      students,
+      staffMembers,
+      allocations,
+      complaints,
+      visitors,
+      notices,
+      messFeedbackList,
+      notifications,
+    };
+    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('Failed to save store:', err);
+  }
+}
+
+function loadStore() {
+  try {
+    if (fs.existsSync(DB_FILE)) {
+      const content = fs.readFileSync(DB_FILE, 'utf-8');
+      const data = JSON.parse(content);
+      if (Array.isArray(data.users) && data.users.length > 0) {
+        users.splice(0, users.length, ...data.users);
+      }
+      if (Array.isArray(data.rooms) && data.rooms.length > 0) {
+        rooms.splice(0, rooms.length, ...data.rooms);
+      }
+      if (Array.isArray(data.students) && data.students.length > 0) {
+        students.splice(0, students.length, ...data.students);
+      }
+      if (Array.isArray(data.staffMembers) && data.staffMembers.length > 0) {
+        staffMembers.splice(0, staffMembers.length, ...data.staffMembers);
+      }
+      if (Array.isArray(data.allocations)) {
+        allocations.splice(0, allocations.length, ...data.allocations);
+      }
+      if (Array.isArray(data.complaints)) {
+        complaints.splice(0, complaints.length, ...data.complaints);
+      }
+      if (Array.isArray(data.visitors)) {
+        visitors.splice(0, visitors.length, ...data.visitors);
+      }
+      if (Array.isArray(data.notices)) {
+        notices.splice(0, notices.length, ...data.notices);
+      }
+      if (Array.isArray(data.messFeedbackList)) {
+        messFeedbackList.splice(0, messFeedbackList.length, ...data.messFeedbackList);
+      }
+      if (Array.isArray(data.notifications)) {
+        notifications.splice(0, notifications.length, ...data.notifications);
+      }
+      console.log(`[Store] Loaded ${users.length} users, ${rooms.length} rooms, ${students.length} students`);
+    } else {
+      saveStore();
+    }
+  } catch (err) {
+    console.error('Failed to load store:', err);
+  }
+}
+
+// Initialize persistent store
+loadStore();
+
 // Helper to update room status based on occupants
 function updateRoomStatus(roomId: string) {
   const room = rooms.find(r => r.id === roomId);
@@ -749,9 +823,12 @@ function updateRoomStatus(roomId: string) {
 // AUTHENTICATION
 app.post('/api/auth/login', (req: Request, res: Response) => {
   const { email, password } = req.body;
-  const user = users.find(u => u.email.toLowerCase() === (email || '').toLowerCase().trim());
+  const cleanEmail = (email || '').toLowerCase().trim();
+  const cleanPass = (password || '').trim();
 
-  if (!user || user.password_hash !== password) {
+  const user = users.find(u => u.email.toLowerCase() === cleanEmail);
+
+  if (!user || user.password_hash !== cleanPass) {
     return res.status(401).json({ message: 'Invalid email or password' });
   }
 
@@ -781,14 +858,27 @@ app.post('/api/auth/login', (req: Request, res: Response) => {
 });
 
 app.post('/api/auth/register', (req: Request, res: Response) => {
-  const { full_name, email, password, role, phone, enrollment_no, department, year_of_study, gender } = req.body;
+  const {
+    full_name,
+    email,
+    password,
+    role,
+    phone,
+    enrollment_no,
+    department,
+    year_of_study,
+    gender,
+    specialization,
+    employee_id,
+  } = req.body;
 
   if (!email || !password || !full_name) {
-    return res.status(400).json({ message: 'Missing required registration fields' });
+    return res.status(400).json({ message: 'Full name, email, and password are required' });
   }
 
-  if (users.some(u => u.email.toLowerCase() === email.toLowerCase())) {
-    return res.status(400).json({ message: 'User with this email already exists' });
+  const cleanEmail = email.toLowerCase().trim();
+  if (users.some(u => u.email.toLowerCase() === cleanEmail)) {
+    return res.status(400).json({ message: 'An account with this email address already exists' });
   }
 
   const userRole = role === 'staff' ? 'staff' : (role === 'warden' ? 'warden' : 'student');
@@ -796,24 +886,26 @@ app.post('/api/auth/register', (req: Request, res: Response) => {
 
   const newUser: User = {
     id: userId,
-    email: email.toLowerCase().trim(),
-    password_hash: password,
-    full_name,
+    email: cleanEmail,
+    password_hash: String(password).trim(),
+    full_name: String(full_name).trim(),
     role: userRole,
-    phone: phone || '',
+    phone: phone ? String(phone).trim() : '',
     created_at: new Date().toISOString(),
   };
   users.push(newUser);
 
   let newStudentProfile = null;
+  let newStaffProfile = null;
+
   if (userRole === 'student') {
     newStudentProfile = {
       id: `std-${Date.now()}`,
       user_id: userId,
-      full_name,
+      full_name: newUser.full_name,
       email: newUser.email,
-      enrollment_no: enrollment_no || `ST-${Math.floor(1000 + Math.random() * 9000)}`,
-      department: department || 'Engineering',
+      enrollment_no: enrollment_no ? String(enrollment_no).trim() : `ST-${Math.floor(1000 + Math.random() * 9000)}`,
+      department: department || 'Computer Science & Engineering',
       year_of_study: Number(year_of_study) || 1,
       gender: gender || 'Other',
       emergency_contact: '',
@@ -823,11 +915,26 @@ app.post('/api/auth/register', (req: Request, res: Response) => {
       created_at: new Date().toISOString(),
     };
     students.push(newStudentProfile);
+  } else if (userRole === 'staff') {
+    newStaffProfile = {
+      id: `stf-${Date.now()}`,
+      user_id: userId,
+      full_name: newUser.full_name,
+      email: newUser.email,
+      employee_id: employee_id ? String(employee_id).trim() : `EMP-${Math.floor(100 + Math.random() * 900)}`,
+      specialization: specialization || 'General Maintenance',
+      phone: newUser.phone,
+      status: 'available' as const,
+    };
+    staffMembers.push(newStaffProfile);
   }
+
+  // Persist immediately to disk
+  saveStore();
 
   const token = `token-${newUser.id}-${Date.now()}`;
   return res.status(201).json({
-    message: 'Registration successful',
+    message: 'Account created successfully',
     token,
     user: {
       id: newUser.id,
@@ -837,184 +944,8 @@ app.post('/api/auth/register', (req: Request, res: Response) => {
       phone: newUser.phone,
     },
     studentProfile: newStudentProfile,
+    staffProfile: newStaffProfile,
   });
-});
-
-// AUTOMATION: One-click & Batch Registration
-app.post('/api/auth/automate-register', (req: Request, res: Response) => {
-  const { count = 1, role = 'student', autoAllocateRoom = false } = req.body;
-  const sampleNames = [
-    { name: 'Maya Patel', gender: 'Female', dept: 'Computer Science' },
-    { name: 'Lucas Silva', gender: 'Male', dept: 'Mechanical Engineering' },
-    { name: 'Elena Rostova', gender: 'Female', dept: 'Electrical Engineering' },
-    { name: 'Aiden Ross', gender: 'Male', dept: 'Biotechnology' },
-    { name: 'Kavita Rao', gender: 'Female', dept: 'Computer Science' },
-    { name: 'Jin Woo', gender: 'Male', dept: 'Data Science' },
-    { name: 'Siddharth Nair', gender: 'Male', dept: 'Civil Engineering' },
-    { name: 'Chloe Bennet', gender: 'Female', dept: 'Information Technology' },
-    { name: 'Omar Farooq', gender: 'Male', dept: 'Electrical Engineering' },
-    { name: 'Nia Sharma', gender: 'Female', dept: 'Biotechnology' },
-  ];
-  const bloodGroups = ['O+', 'A+', 'B+', 'AB+', 'O-'];
-
-  const createdUsers: any[] = [];
-  const targetCount = Math.min(Math.max(Number(count) || 1, 1), 10);
-
-  for (let i = 0; i < targetCount; i++) {
-    const randomPick = sampleNames[Math.floor(Math.random() * sampleNames.length)];
-    const uniqueNum = Math.floor(1000 + Math.random() * 9000);
-    const firstName = randomPick.name.split(' ')[0].toLowerCase();
-    const email = `${firstName}.${uniqueNum}@hostelsync.edu`;
-    const password = 'student123';
-    const userId = `usr-${Date.now()}-${i}`;
-
-    const newUser: User = {
-      id: userId,
-      email,
-      password_hash: password,
-      full_name: `${randomPick.name} #${uniqueNum.toString().slice(-2)}`,
-      role: 'student',
-      phone: `+1 (555) ${Math.floor(100 + Math.random() * 900)}-${Math.floor(1000 + Math.random() * 9000)}`,
-      created_at: new Date().toISOString(),
-    };
-    users.push(newUser);
-
-    let allocatedRoomId: string | null = null;
-    if (autoAllocateRoom) {
-      const availableRoom = rooms.find(r => {
-        const occ = students.filter(s => s.room_id === r.id).length;
-        return occ < r.capacity && r.status !== 'maintenance';
-      });
-      if (availableRoom) {
-        allocatedRoomId = availableRoom.id;
-      }
-    }
-
-    const newStudentProfile: Student = {
-      id: `std-${Date.now()}-${i}`,
-      user_id: userId,
-      full_name: newUser.full_name,
-      email: newUser.email,
-      enrollment_no: `CS-2026-${uniqueNum}`,
-      department: randomPick.dept,
-      year_of_study: Math.floor(1 + Math.random() * 4),
-      gender: randomPick.gender,
-      emergency_contact: `+1 (555) 900-${uniqueNum} (Parent)`,
-      blood_group: bloodGroups[Math.floor(Math.random() * bloodGroups.length)],
-      room_id: allocatedRoomId,
-      hostel_name: 'Horizon Hall',
-      created_at: new Date().toISOString(),
-    };
-    students.push(newStudentProfile);
-
-    if (allocatedRoomId) {
-      allocations.push({
-        id: `alc-${Date.now()}-${i}`,
-        student_id: newStudentProfile.id,
-        room_id: allocatedRoomId,
-        allocated_by: 'usr-warden-1',
-        allocation_date: new Date().toISOString().split('T')[0],
-        status: 'active',
-        notes: 'Automated test room assignment',
-      });
-      updateRoomStatus(allocatedRoomId);
-    }
-
-    createdUsers.push({
-      user: {
-        id: newUser.id,
-        email: newUser.email,
-        full_name: newUser.full_name,
-        role: newUser.role,
-        phone: newUser.phone,
-        password: password,
-      },
-      studentProfile: newStudentProfile,
-      token: `token-${newUser.id}-${Date.now()}`,
-    });
-  }
-
-  // Return the first created user for immediate login if single, or full batch
-  const primary = createdUsers[0];
-  return res.status(201).json({
-    message: `Successfully automated registration for ${targetCount} student(s)`,
-    token: primary.token,
-    user: primary.user,
-    studentProfile: primary.studentProfile,
-    batch: createdUsers,
-  });
-});
-
-// AUTOMATION: Get All Quick Personas for 1-Click Login
-app.get('/api/auth/test-personas', (_req: Request, res: Response) => {
-  const personas = [
-    {
-      id: 'usr-warden-1',
-      full_name: 'Dr. Robert Vance',
-      email: 'warden@hostelsync.edu',
-      password: 'admin123',
-      role: 'warden',
-      tag: 'Chief Warden',
-      description: 'Hostel administrator with full management access',
-    },
-    {
-      id: 'usr-student-1',
-      full_name: 'Alex Morgan',
-      email: 'student@hostelsync.edu',
-      password: 'student123',
-      role: 'student',
-      tag: 'Resident • Room A-204',
-      description: 'Senior resident with room allocation & roommates',
-    },
-    {
-      id: 'usr-student-2',
-      full_name: 'Priya Sharma',
-      email: 'priya@hostelsync.edu',
-      password: 'student123',
-      role: 'student',
-      tag: 'Resident • Room B-102',
-      description: 'Engineering student in Pinnacle Tower',
-    },
-    {
-      id: 'usr-staff-1',
-      full_name: 'David Miller',
-      email: 'staff@hostelsync.edu',
-      password: 'staff123',
-      role: 'staff',
-      tag: 'Staff • Electrician',
-      description: 'Lead maintenance technician for electrical systems',
-    },
-    {
-      id: 'usr-staff-2',
-      full_name: 'Carlos Mendez',
-      email: 'carlos@hostelsync.edu',
-      password: 'staff123',
-      role: 'staff',
-      tag: 'Staff • Plumber',
-      description: 'Senior technician for plumbing & drainage repairs',
-    },
-  ];
-
-  // Include any newly registered student users (up to 5 recent)
-  const recentCustomStudents = users
-    .filter(u => u.role === 'student' && !['usr-student-1', 'usr-student-2', 'usr-student-3', 'usr-student-4', 'usr-student-5'].includes(u.id))
-    .slice(-5)
-    .reverse()
-    .map(u => {
-      const student = students.find(s => s.user_id === u.id);
-      const room = student?.room_id ? rooms.find(r => r.id === student.room_id) : null;
-      return {
-        id: u.id,
-        full_name: u.full_name,
-        email: u.email,
-        password: u.password_hash,
-        role: u.role,
-        tag: room ? `Student • Room ${room.room_number}` : 'Registered Student',
-        description: `Enrolled in ${student?.department || 'Engineering'}`,
-      };
-    });
-
-  return res.json([...personas, ...recentCustomStudents]);
 });
 
 app.post('/api/auth/logout', (_req: Request, res: Response) => {
@@ -1105,6 +1036,7 @@ app.put('/api/students/:id', (req: Request, res: Response) => {
     if (user) user.phone = phone;
   }
 
+  saveStore();
   return res.json({ message: 'Student updated successfully', student });
 });
 
@@ -1161,6 +1093,7 @@ app.post('/api/rooms', (req: Request, res: Response) => {
   };
 
   rooms.push(newRoom);
+  saveStore();
   return res.status(201).json(newRoom);
 });
 
@@ -1179,6 +1112,7 @@ app.put('/api/rooms/:id', (req: Request, res: Response) => {
   if (amenities) room.amenities = amenities;
 
   updateRoomStatus(room.id);
+  saveStore();
   return res.json(room);
 });
 
@@ -1194,6 +1128,7 @@ app.delete('/api/rooms/:id', (req: Request, res: Response) => {
   });
 
   rooms.splice(index, 1);
+  saveStore();
   return res.json({ message: 'Room deleted successfully' });
 });
 
@@ -1243,6 +1178,7 @@ app.post('/api/allocations', (req: Request, res: Response) => {
     created_at: new Date().toISOString(),
   });
 
+  saveStore();
   return res.status(201).json({ message: 'Student allocated to room successfully', allocation: newAllocation });
 });
 
@@ -1273,6 +1209,7 @@ app.delete('/api/allocations/:studentId', (req: Request, res: Response) => {
     created_at: new Date().toISOString(),
   });
 
+  saveStore();
   return res.json({ message: 'Student room allocation removed successfully' });
 });
 
@@ -1351,6 +1288,7 @@ app.post('/api/complaints', (req: Request, res: Response) => {
     });
   }
 
+  saveStore();
   return res.status(201).json(newComplaint);
 });
 
@@ -1426,6 +1364,7 @@ app.put('/api/complaints/:id', (req: Request, res: Response) => {
     });
   }
 
+  saveStore();
   return res.json(complaint);
 });
 
@@ -1514,6 +1453,7 @@ app.post('/api/visitors', (req: Request, res: Response) => {
     });
   }
 
+  saveStore();
   return res.status(201).json(newVisitor);
 });
 
@@ -1541,6 +1481,7 @@ app.put('/api/visitors/:id', (req: Request, res: Response) => {
     });
   }
 
+  saveStore();
   return res.json(visitor);
 });
 
@@ -1585,6 +1526,7 @@ app.post('/api/notices', (req: Request, res: Response) => {
     });
   });
 
+  saveStore();
   return res.status(201).json(newNotice);
 });
 
@@ -1600,6 +1542,7 @@ app.put('/api/notices/:id', (req: Request, res: Response) => {
   if (target_audience) notice.target_audience = target_audience;
   if (is_published !== undefined) notice.is_published = is_published;
 
+  saveStore();
   return res.json(notice);
 });
 
@@ -1607,6 +1550,7 @@ app.delete('/api/notices/:id', (req: Request, res: Response) => {
   const index = notices.findIndex(n => n.id === req.params.id);
   if (index === -1) return res.status(404).json({ message: 'Notice not found' });
   notices.splice(index, 1);
+  saveStore();
   return res.json({ message: 'Notice deleted successfully' });
 });
 
@@ -1636,6 +1580,7 @@ app.post('/api/feedback', (req: Request, res: Response) => {
   };
 
   messFeedbackList.unshift(newFeedback);
+  saveStore();
   return res.status(201).json(newFeedback);
 });
 
@@ -1653,6 +1598,7 @@ app.get('/api/notifications', (req: Request, res: Response) => {
 app.put('/api/notifications/:id/read', (req: Request, res: Response) => {
   const notif = notifications.find(n => n.id === req.params.id);
   if (notif) notif.is_read = true;
+  saveStore();
   return res.json({ success: true });
 });
 
@@ -1779,7 +1725,7 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.resolve(__dirname, 'dist');
+    const distPath = path.resolve(process.cwd(), 'dist');
     if (fs.existsSync(distPath)) {
       app.use(express.static(distPath));
       app.get('*', (_req, res) => {

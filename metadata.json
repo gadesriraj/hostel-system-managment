@@ -1,0 +1,6 @@
+{
+  "name": "HostelSync - Smart Hostel Management Platform",
+  "description": "Comprehensive centralized digital hostel management platform for students, wardens, and staff with room allocation, maintenance tracking, visitor logs, and analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

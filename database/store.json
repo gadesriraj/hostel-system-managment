@@ -89,6 +89,33 @@
       "role": "student",
       "phone": "",
       "created_at": "2026-10-11T06:58:37.092Z"
+    },
+    {
+      "id": "usr-1791706454831",
+      "email": "test@example.com",
+      "password_hash": "mypassword",
+      "full_name": "Test User",
+      "role": "student",
+      "phone": "",
+      "created_at": "2026-10-11T08:14:14.831Z"
+    },
+    {
+      "id": "usr-1791706559713",
+      "email": "port8080@hostelsync.edu",
+      "password_hash": "password123",
+      "full_name": "Port Test",
+      "role": "student",
+      "phone": "",
+      "created_at": "2026-10-11T08:15:59.713Z"
+    },
+    {
+      "id": "usr-1791707064524",
+      "email": "resident101@hostelsync.edu",
+      "password_hash": "secretpass123",
+      "full_name": "New Resident",
+      "role": "student",
+      "phone": "",
+      "created_at": "2026-10-11T08:24:24.524Z"
     }
   ],
   "rooms": [
@@ -306,6 +333,51 @@
       "room_id": null,
       "hostel_name": "Horizon Hall",
       "created_at": "2026-10-11T06:58:37.092Z"
+    },
+    {
+      "id": "std-1791706454831",
+      "user_id": "usr-1791706454831",
+      "full_name": "Test User",
+      "email": "test@example.com",
+      "enrollment_no": "ST-1819",
+      "department": "Computer Science & Engineering",
+      "year_of_study": 1,
+      "gender": "Other",
+      "emergency_contact": "",
+      "blood_group": "Unknown",
+      "room_id": null,
+      "hostel_name": "Horizon Hall",
+      "created_at": "2026-10-11T08:14:14.831Z"
+    },
+    {
+      "id": "std-1791706559713",
+      "user_id": "usr-1791706559713",
+      "full_name": "Port Test",
+      "email": "port8080@hostelsync.edu",
+      "enrollment_no": "ST-1501",
+      "department": "Computer Science & Engineering",
+      "year_of_study": 1,
+      "gender": "Other",
+      "emergency_contact": "",
+      "blood_group": "Unknown",
+      "room_id": null,
+      "hostel_name": "Horizon Hall",
+      "created_at": "2026-10-11T08:15:59.713Z"
+    },
+    {
+      "id": "std-1791707064524",
+      "user_id": "usr-1791707064524",
+      "full_name": "New Resident",
+      "email": "resident101@hostelsync.edu",
+      "enrollment_no": "ST-9435",
+      "department": "Computer Science & Engineering",
+      "year_of_study": 1,
+      "gender": "Other",
+      "emergency_contact": "",
+      "blood_group": "Unknown",
+      "room_id": null,
+      "hostel_name": "Horizon Hall",
+      "created_at": "2026-10-11T08:24:24.524Z"
     }
   ],
   "staffMembers": [

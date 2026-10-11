@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Building2,
   GraduationCap,
@@ -7,15 +7,15 @@ import {
   Mail,
   User,
   Phone,
-  BookOpen,
   ArrowRight,
   ShieldCheck,
   CheckCircle2,
   AlertCircle,
-  Briefcase,
-  IdCard,
+  Database,
+  ChevronDown,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { getStoredAccounts } from '../services/api';
 
 export const AuthPage: React.FC = () => {
   const { login, register } = useAuth();
@@ -25,6 +25,8 @@ export const AuthPage: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [storedAccounts, setStoredAccounts] = useState<any[]>([]);
+  const [showStoredAccounts, setShowStoredAccounts] = useState(false);
 
   // Login form state
   const [email, setEmail] = useState('');
@@ -45,16 +47,35 @@ export const AuthPage: React.FC = () => {
     employee_id: '',
   });
 
+  // Load any previously registered accounts stored on device
+  useEffect(() => {
+    loadStoredAccountsList();
+  }, [isRegister]);
+
+  const loadStoredAccountsList = () => {
+    const list = getStoredAccounts();
+    setStoredAccounts(list);
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
     setSuccessMessage('');
+
+    if (!email.trim() || !password) {
+      setErrorMessage('Please enter both your email address and password.');
+      return;
+    }
+
     setLoading(true);
     try {
       await login(email.trim(), password);
+      // Login succeeded - useAuth now has user set and App.tsx will switch to dashboard.
     } catch (err: any) {
-      setErrorMessage(err.message || 'Invalid email or password. Please verify your credentials.');
-    } finally {
+      setErrorMessage(
+        err.message ||
+          'Invalid credentials. Please verify your email and password, or create a new account.'
+      );
       setLoading(false);
     }
   };
@@ -63,22 +84,50 @@ export const AuthPage: React.FC = () => {
     e.preventDefault();
     setErrorMessage('');
     setSuccessMessage('');
+
+    if (!regData.full_name.trim() || !regData.email.trim() || !regData.password) {
+      setErrorMessage('Full name, email address, and password are required.');
+      return;
+    }
+
     setLoading(true);
     try {
+      const cleanEmail = regData.email.trim();
+      const cleanPass = regData.password.trim();
+
       await register({
         ...regData,
-        email: regData.email.trim(),
+        email: cleanEmail,
+        password: cleanPass,
         year_of_study: Number(regData.year_of_study),
       });
-      setSuccessMessage('Account created and stored successfully! Logging you in...');
+
+      // Update stored list
+      loadStoredAccountsList();
+      setSuccessMessage('Account created and stored successfully! Entering your dashboard...');
+      // State transition will be picked up by useAuth() since user was populated
     } catch (err: any) {
-      setErrorMessage(err.message || 'Registration failed. Please check the entered data.');
+      setErrorMessage(
+        err.message || 'Registration failed. Please verify the information entered.'
+      );
       setLoading(false);
     }
   };
 
+  const handleAutofillStored = (stored: any) => {
+    setEmail(stored.user.email);
+    setPassword(stored.password || '');
+    setErrorMessage('');
+    setSuccessMessage(`Loaded stored credentials for ${stored.user.full_name} (${stored.user.role})`);
+    setTimeout(() => setSuccessMessage(''), 4000);
+  };
+
   const handleForgotSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email.trim()) {
+      setErrorMessage('Please enter your email to receive recovery instructions.');
+      return;
+    }
     setResetSuccess(true);
   };
 
@@ -107,6 +156,7 @@ export const AuthPage: React.FC = () => {
               setIsRegister(false);
               setIsForgot(false);
               setErrorMessage('');
+              setSuccessMessage('');
             }}
             className={`px-5 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
               !isRegister && !isForgot
@@ -122,6 +172,7 @@ export const AuthPage: React.FC = () => {
               setIsRegister(true);
               setIsForgot(false);
               setErrorMessage('');
+              setSuccessMessage('');
             }}
             className={`px-5 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
               isRegister
@@ -165,11 +216,12 @@ export const AuthPage: React.FC = () => {
                   </div>
                   Please check your inbox. If registered, a recovery link will be sent.
                   <button
+                    type="button"
                     onClick={() => {
                       setIsForgot(false);
                       setResetSuccess(false);
                     }}
-                    className="mt-4 block w-full py-2 bg-slate-700 text-white rounded-lg text-center font-medium hover:bg-slate-600"
+                    className="mt-4 block w-full py-2 bg-slate-700 text-white rounded-lg text-center font-medium hover:bg-slate-600 cursor-pointer"
                   >
                     Back to Sign In
                   </button>
@@ -201,7 +253,7 @@ export const AuthPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setIsForgot(false)}
-                    className="w-full text-center text-xs text-slate-400 hover:text-white"
+                    className="w-full text-center text-xs text-slate-400 hover:text-white cursor-pointer"
                   >
                     Cancel and return to Sign In
                   </button>
@@ -269,12 +321,57 @@ export const AuthPage: React.FC = () => {
                 <span className="text-xs text-slate-400">Don't have an account yet? </span>
                 <button
                   type="button"
-                  onClick={() => setIsRegister(true)}
+                  onClick={() => {
+                    setIsRegister(true);
+                    setErrorMessage('');
+                    setSuccessMessage('');
+                  }}
                   className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 cursor-pointer"
                 >
                   Create one now
                 </button>
               </div>
+
+              {/* Stored Accounts list helper if any accounts were created */}
+              {storedAccounts.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-slate-700/60">
+                  <button
+                    type="button"
+                    onClick={() => setShowStoredAccounts(!showStoredAccounts)}
+                    className="w-full flex items-center justify-between text-left text-xs font-medium text-slate-400 hover:text-indigo-300 cursor-pointer py-1"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <Database className="w-3.5 h-3.5 text-indigo-400" />
+                      <span>Stored Accounts in System ({storedAccounts.length})</span>
+                    </span>
+                    <ChevronDown
+                      className={`w-3.5 h-3.5 transition-transform ${
+                        showStoredAccounts ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
+
+                  {showStoredAccounts && (
+                    <div className="mt-2 space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                      {storedAccounts.map((item, idx) => (
+                        <div
+                          key={idx}
+                          onClick={() => handleAutofillStored(item)}
+                          className="p-2 bg-slate-900/90 hover:bg-indigo-950/40 border border-slate-700/70 hover:border-indigo-500/50 rounded-lg text-xs cursor-pointer flex items-center justify-between transition-colors"
+                        >
+                          <div>
+                            <p className="font-medium text-white truncate">{item.user.full_name}</p>
+                            <p className="text-[11px] text-slate-400 truncate">{item.user.email}</p>
+                          </div>
+                          <span className="text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                            {item.user.role}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </form>
           ) : (
             /* Create New Account Form */
@@ -347,7 +444,10 @@ export const AuthPage: React.FC = () => {
                     type="email"
                     required
                     value={regData.email}
-                    onChange={e => setRegData({ ...regData, email: e.target.value })}
+                    onChange={e => {
+                      setRegData({ ...regData, email: e.target.value });
+                      setEmail(e.target.value);
+                    }}
                     placeholder="name@hostelsync.edu"
                     className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-9 pr-3 py-1.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                   />
@@ -362,7 +462,6 @@ export const AuthPage: React.FC = () => {
                       <label className="block text-xs font-medium text-slate-300">Enrollment No.</label>
                       <input
                         type="text"
-                        required
                         value={regData.enrollment_no}
                         onChange={e => setRegData({ ...regData, enrollment_no: e.target.value })}
                         placeholder="e.g. CS-2026-101"
@@ -471,8 +570,11 @@ export const AuthPage: React.FC = () => {
                     type="password"
                     required
                     value={regData.password}
-                    onChange={e => setRegData({ ...regData, password: e.target.value })}
-                    placeholder="Create a strong password"
+                    onChange={e => {
+                      setRegData({ ...regData, password: e.target.value });
+                      setPassword(e.target.value);
+                    }}
+                    placeholder="Create a password"
                     className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-9 pr-3 py-1.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                   />
                 </div>
@@ -494,7 +596,11 @@ export const AuthPage: React.FC = () => {
                 <span className="text-xs text-slate-400">Already have an account? </span>
                 <button
                   type="button"
-                  onClick={() => setIsRegister(false)}
+                  onClick={() => {
+                    setIsRegister(false);
+                    setErrorMessage('');
+                    setSuccessMessage('');
+                  }}
                   className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 cursor-pointer"
                 >
                   Sign in with existing account

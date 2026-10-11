@@ -67,7 +67,7 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({ activeTab }) => 
       showToast('Work order status updated to: In Progress.');
       loadStaffComplaints();
     } catch (err: any) {
-      alert(err.message);
+      showToast(err.message || 'Failed to update work order status');
     }
   };
 
@@ -85,7 +85,7 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({ activeTab }) => 
       showToast(`Complaint ${resolvingComplaint.complaint_code} marked as resolved!`);
       loadStaffComplaints();
     } catch (err: any) {
-      alert(err.message);
+      showToast(err.message || 'Failed to resolve complaint');
     } finally {
       setIsUpdating(false);
     }

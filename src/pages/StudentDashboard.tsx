@@ -30,8 +30,8 @@ interface StudentDashboardProps {
 }
 
 export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab }) => {
-  const { user } = useAuth();
-  const [profile, setProfile] = useState<StudentProfile | null>(null);
+  const { user, studentProfile } = useAuth();
+  const [profile, setProfile] = useState<StudentProfile | null>(studentProfile);
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [visitors, setVisitors] = useState<Visitor[]>([]);
   const [notices, setNotices] = useState<Notice[]>([]);
@@ -44,6 +44,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab })
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [alertSuccess, setAlertSuccess] = useState('');
+  const [alertError, setAlertError] = useState('');
 
   // Complaint Form
   const [compForm, setCompForm] = useState({
@@ -75,26 +76,37 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab })
 
   useEffect(() => {
     loadData();
-  }, [user]);
+  }, [user, studentProfile]);
 
   const loadData = async () => {
     if (!user) return;
     setLoading(true);
     try {
-      const studentData = await api.getStudent(user.id);
-      setProfile(studentData);
+      let studentData = profile || studentProfile;
+      try {
+        studentData = await api.getStudent(user.id);
+        setProfile(studentData);
+      } catch (e) {
+        console.warn('Using existing student session data:', e);
+        if (studentProfile) {
+          studentData = studentProfile;
+          setProfile(studentProfile);
+        }
+      }
 
-      const [cList, vList, nList, fList] = await Promise.all([
-        api.getComplaints({ student_id: studentData.id }),
-        api.getVisitors({ student_id: studentData.id }),
-        api.getNotices(),
-        api.getFeedback(),
-      ]);
+      if (studentData) {
+        const [cList, vList, nList, fList] = await Promise.all([
+          api.getComplaints({ student_id: studentData.id }).catch(() => []),
+          api.getVisitors({ student_id: studentData.id }).catch(() => []),
+          api.getNotices().catch(() => []),
+          api.getFeedback().catch(() => []),
+        ]);
 
-      setComplaints(cList);
-      setVisitors(vList);
-      setNotices(nList);
-      setFeedbacks(fList.filter(f => f.student_id === studentData.id));
+        setComplaints(cList);
+        setVisitors(vList);
+        setNotices(nList);
+        setFeedbacks(fList.filter(f => f.student_id === studentData.id));
+      }
     } catch (err) {
       console.error('Error loading student data:', err);
     } finally {
@@ -121,7 +133,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab })
       const updated = await api.getComplaints({ student_id: profile.id });
       setComplaints(updated);
     } catch (err: any) {
-      alert(err.message || 'Failed to submit complaint');
+      setAlertError(err.message || 'Failed to submit complaint');
+      setTimeout(() => setAlertError(''), 4000);
     } finally {
       setIsSubmitting(false);
     }
@@ -157,7 +170,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab })
       const updated = await api.getVisitors({ student_id: profile.id });
       setVisitors(updated);
     } catch (err: any) {
-      alert(err.message || 'Failed to register visitor');
+      setAlertError(err.message || 'Failed to register visitor');
+      setTimeout(() => setAlertError(''), 4000);
     } finally {
       setIsSubmitting(false);
     }
@@ -183,7 +197,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab })
       const updated = await api.getFeedback();
       setFeedbacks(updated.filter(f => f.student_id === profile.id));
     } catch (err: any) {
-      alert(err.message || 'Failed to submit feedback');
+      setAlertError(err.message || 'Failed to submit feedback');
+      setTimeout(() => setAlertError(''), 4000);
     } finally {
       setIsSubmitting(false);
     }
@@ -214,6 +229,18 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab })
             <span>{alertSuccess}</span>
           </div>
           <button onClick={() => setAlertSuccess('')} className="text-emerald-700 hover:text-emerald-900 font-bold">
+            ×
+          </button>
+        </div>
+      )}
+
+      {alertError && (
+        <div className="p-3.5 bg-red-50 border border-red-200 text-red-800 rounded-xl text-xs flex items-center justify-between shadow-xs animate-in fade-in">
+          <div className="flex items-center gap-2 font-medium">
+            <AlertCircle className="w-4 h-4 text-red-600" />
+            <span>{alertError}</span>
+          </div>
+          <button onClick={() => setAlertError('')} className="text-red-700 hover:text-red-900 font-bold">
             ×
           </button>
         </div>
@@ -297,7 +324,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab })
       </div>
 
       {/* Dynamic Tab Views */}
-      {activeTab === 'my_room' && (
+      {(!activeTab || activeTab === 'overview' || activeTab === 'my_room') && (
         <div className="space-y-6">
           {/* Room Allocation Info */}
           <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-xs">

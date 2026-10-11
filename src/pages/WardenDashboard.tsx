@@ -216,7 +216,7 @@ export const WardenDashboard: React.FC<WardenDashboardProps> = ({ activeTab }) =
       });
       loadAllData();
     } catch (err: any) {
-      alert(err.message || 'Failed to save room');
+      showToast(err.message || 'Failed to save room');
     }
   };
 
@@ -227,7 +227,7 @@ export const WardenDashboard: React.FC<WardenDashboardProps> = ({ activeTab }) =
       showToast('Room removed from hostel system.');
       loadAllData();
     } catch (err: any) {
-      alert(err.message);
+      showToast(err.message || 'Failed to delete room');
     }
   };
 
@@ -247,7 +247,7 @@ export const WardenDashboard: React.FC<WardenDashboardProps> = ({ activeTab }) =
       showToast('Student successfully allocated to room.');
       loadAllData();
     } catch (err: any) {
-      alert(err.message || 'Room allocation failed');
+      showToast(err.message || 'Room allocation failed');
     }
   };
 
@@ -258,7 +258,7 @@ export const WardenDashboard: React.FC<WardenDashboardProps> = ({ activeTab }) =
       showToast('Student room allocation released.');
       loadAllData();
     } catch (err: any) {
-      alert(err.message);
+      showToast(err.message || 'Failed to release room allocation');
     }
   };
 
@@ -278,7 +278,7 @@ export const WardenDashboard: React.FC<WardenDashboardProps> = ({ activeTab }) =
       showToast('Maintenance task assigned to technician.');
       loadAllData();
     } catch (err: any) {
-      alert(err.message);
+      showToast(err.message || 'Failed to assign complaint');
     }
   };
 
@@ -292,7 +292,7 @@ export const WardenDashboard: React.FC<WardenDashboardProps> = ({ activeTab }) =
       showToast('Visitor pass approved.');
       loadAllData();
     } catch (err: any) {
-      alert(err.message);
+      showToast(err.message || 'Failed to approve visitor');
     }
   };
 
@@ -308,7 +308,7 @@ export const WardenDashboard: React.FC<WardenDashboardProps> = ({ activeTab }) =
       showToast('Visitor request rejected.');
       loadAllData();
     } catch (err: any) {
-      alert(err.message);
+      showToast(err.message || 'Failed to reject visitor');
     }
   };
 
@@ -335,7 +335,7 @@ export const WardenDashboard: React.FC<WardenDashboardProps> = ({ activeTab }) =
       showToast('Notice published to hostel board.');
       loadAllData();
     } catch (err: any) {
-      alert(err.message);
+      showToast(err.message || 'Failed to publish notice');
     }
   };
 
@@ -346,7 +346,7 @@ export const WardenDashboard: React.FC<WardenDashboardProps> = ({ activeTab }) =
       showToast('Notice deleted.');
       loadAllData();
     } catch (err: any) {
-      alert(err.message);
+      showToast(err.message || 'Failed to delete notice');
     }
   };
 

@@ -32,6 +32,7 @@ export interface StudentProfile {
     department: string;
     year_of_study: number;
   }>;
+  created_at?: string;
 }
 
 export interface StaffProfile {

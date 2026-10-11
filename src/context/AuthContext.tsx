@@ -25,75 +25,72 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Restore saved session on load
   useEffect(() => {
-    const savedToken = localStorage.getItem('hostelsync_token');
-    const savedUser = localStorage.getItem('hostelsync_user');
-    const savedStudent = localStorage.getItem('hostelsync_student');
-    const savedStaff = localStorage.getItem('hostelsync_staff');
+    try {
+      const savedToken = localStorage.getItem('hostelsync_token');
+      const savedUser = localStorage.getItem('hostelsync_user');
+      const savedStudent = localStorage.getItem('hostelsync_student');
+      const savedStaff = localStorage.getItem('hostelsync_staff');
 
-    if (savedToken && savedUser) {
-      try {
+      if (savedToken && savedUser) {
         setToken(savedToken);
         setUser(JSON.parse(savedUser));
         if (savedStudent) setStudentProfile(JSON.parse(savedStudent));
         if (savedStaff) setStaffProfile(JSON.parse(savedStaff));
-      } catch (err) {
-        console.error('Failed to parse cached session', err);
-        localStorage.clear();
       }
+    } catch (err) {
+      console.error('Failed to parse cached session:', err);
+      localStorage.removeItem('hostelsync_token');
+      localStorage.removeItem('hostelsync_user');
+      localStorage.removeItem('hostelsync_student');
+      localStorage.removeItem('hostelsync_staff');
+    } finally {
+      setIsLoading(false);
     }
-    // Cleanly complete loading state without forcing any hardcoded mock account
-    setIsLoading(false);
   }, []);
 
   const login = async (email: string, password: string) => {
-    setIsLoading(true);
-    try {
-      const data = await api.login({ email, password });
-      setToken(data.token);
-      setUser(data.user);
-      setStudentProfile(data.studentProfile || null);
-      setStaffProfile(data.staffProfile || null);
+    // Note: Do NOT set global isLoading=true here.
+    // AuthPage manages its own button loading spinner so AuthPage is never unmounted during login.
+    const data = await api.login({ email, password });
+    setToken(data.token);
+    setUser(data.user);
+    setStudentProfile(data.studentProfile || null);
+    setStaffProfile(data.staffProfile || null);
 
-      localStorage.setItem('hostelsync_token', data.token);
-      localStorage.setItem('hostelsync_user', JSON.stringify(data.user));
-      if (data.studentProfile) {
-        localStorage.setItem('hostelsync_student', JSON.stringify(data.studentProfile));
-      } else {
-        localStorage.removeItem('hostelsync_student');
-      }
-      if (data.staffProfile) {
-        localStorage.setItem('hostelsync_staff', JSON.stringify(data.staffProfile));
-      } else {
-        localStorage.removeItem('hostelsync_staff');
-      }
-    } finally {
-      setIsLoading(false);
+    localStorage.setItem('hostelsync_token', data.token);
+    localStorage.setItem('hostelsync_user', JSON.stringify(data.user));
+    if (data.studentProfile) {
+      localStorage.setItem('hostelsync_student', JSON.stringify(data.studentProfile));
+    } else {
+      localStorage.removeItem('hostelsync_student');
+    }
+    if (data.staffProfile) {
+      localStorage.setItem('hostelsync_staff', JSON.stringify(data.staffProfile));
+    } else {
+      localStorage.removeItem('hostelsync_staff');
     }
   };
 
   const register = async (formData: any) => {
-    setIsLoading(true);
-    try {
-      const data = await api.register(formData);
-      setToken(data.token);
-      setUser(data.user);
-      setStudentProfile(data.studentProfile || null);
-      setStaffProfile(data.staffProfile || null);
+    // Note: Do NOT set global isLoading=true here.
+    // AuthPage manages its own button loading spinner so AuthPage is never unmounted during registration.
+    const data = await api.register(formData);
+    setToken(data.token);
+    setUser(data.user);
+    setStudentProfile(data.studentProfile || null);
+    setStaffProfile(data.staffProfile || null);
 
-      localStorage.setItem('hostelsync_token', data.token);
-      localStorage.setItem('hostelsync_user', JSON.stringify(data.user));
-      if (data.studentProfile) {
-        localStorage.setItem('hostelsync_student', JSON.stringify(data.studentProfile));
-      } else {
-        localStorage.removeItem('hostelsync_student');
-      }
-      if (data.staffProfile) {
-        localStorage.setItem('hostelsync_staff', JSON.stringify(data.staffProfile));
-      } else {
-        localStorage.removeItem('hostelsync_staff');
-      }
-    } finally {
-      setIsLoading(false);
+    localStorage.setItem('hostelsync_token', data.token);
+    localStorage.setItem('hostelsync_user', JSON.stringify(data.user));
+    if (data.studentProfile) {
+      localStorage.setItem('hostelsync_student', JSON.stringify(data.studentProfile));
+    } else {
+      localStorage.removeItem('hostelsync_student');
+    }
+    if (data.staffProfile) {
+      localStorage.setItem('hostelsync_staff', JSON.stringify(data.staffProfile));
+    } else {
+      localStorage.removeItem('hostelsync_staff');
     }
   };
 

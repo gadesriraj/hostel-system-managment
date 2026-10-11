@@ -80,6 +80,39 @@ export const api = {
     }>(res);
   },
 
+  async automateRegister(options?: { count?: number; role?: string; autoAllocateRoom?: boolean }) {
+    const res = await fetch(`${API_BASE}/auth/automate-register`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(options || {}),
+    });
+    return handleResponse<{
+      message: string;
+      token: string;
+      user: User;
+      studentProfile?: StudentProfile;
+      batch?: any[];
+    }>(res);
+  },
+
+  async getTestPersonas() {
+    const res = await fetch(`${API_BASE}/auth/test-personas`, {
+      method: 'GET',
+      headers: getHeaders(),
+    });
+    return handleResponse<
+      Array<{
+        id: string;
+        full_name: string;
+        email: string;
+        password: string;
+        role: 'student' | 'warden' | 'staff';
+        tag: string;
+        description: string;
+      }>
+    >(res);
+  },
+
   async logout() {
     try {
       await fetch(`${API_BASE}/auth/logout`, {

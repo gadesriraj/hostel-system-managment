@@ -18,7 +18,7 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar }) => {
-  const { user, logout, switchDemoRole } = useAuth();
+  const { user, logout, switchDemoRole, automateRegisterAndLogin } = useAuth();
   const [showRoleMenu, setShowRoleMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
 
@@ -161,6 +161,22 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar }) => {
                     <div className="text-[10px] text-gray-400">Staff • Electrical Specialist</div>
                   </div>
                 </button>
+
+                <div className="pt-1 mt-1 border-t border-gray-100">
+                  <button
+                    onClick={async () => {
+                      setShowRoleMenu(false);
+                      await automateRegisterAndLogin({ autoAllocateRoom: true });
+                    }}
+                    className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 text-indigo-600 hover:bg-indigo-50 font-semibold transition-colors"
+                  >
+                    <span className="p-1 rounded bg-indigo-100 text-indigo-700">⚡</span>
+                    <div>
+                      <div>Auto-Register New Student</div>
+                      <div className="text-[10px] text-indigo-400 font-normal">Spawn & switch automatically</div>
+                    </div>
+                  </button>
+                </div>
               </div>
             )}
           </div>

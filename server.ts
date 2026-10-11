@@ -840,6 +840,183 @@ app.post('/api/auth/register', (req: Request, res: Response) => {
   });
 });
 
+// AUTOMATION: One-click & Batch Registration
+app.post('/api/auth/automate-register', (req: Request, res: Response) => {
+  const { count = 1, role = 'student', autoAllocateRoom = false } = req.body;
+  const sampleNames = [
+    { name: 'Maya Patel', gender: 'Female', dept: 'Computer Science' },
+    { name: 'Lucas Silva', gender: 'Male', dept: 'Mechanical Engineering' },
+    { name: 'Elena Rostova', gender: 'Female', dept: 'Electrical Engineering' },
+    { name: 'Aiden Ross', gender: 'Male', dept: 'Biotechnology' },
+    { name: 'Kavita Rao', gender: 'Female', dept: 'Computer Science' },
+    { name: 'Jin Woo', gender: 'Male', dept: 'Data Science' },
+    { name: 'Siddharth Nair', gender: 'Male', dept: 'Civil Engineering' },
+    { name: 'Chloe Bennet', gender: 'Female', dept: 'Information Technology' },
+    { name: 'Omar Farooq', gender: 'Male', dept: 'Electrical Engineering' },
+    { name: 'Nia Sharma', gender: 'Female', dept: 'Biotechnology' },
+  ];
+  const bloodGroups = ['O+', 'A+', 'B+', 'AB+', 'O-'];
+
+  const createdUsers: any[] = [];
+  const targetCount = Math.min(Math.max(Number(count) || 1, 1), 10);
+
+  for (let i = 0; i < targetCount; i++) {
+    const randomPick = sampleNames[Math.floor(Math.random() * sampleNames.length)];
+    const uniqueNum = Math.floor(1000 + Math.random() * 9000);
+    const firstName = randomPick.name.split(' ')[0].toLowerCase();
+    const email = `${firstName}.${uniqueNum}@hostelsync.edu`;
+    const password = 'student123';
+    const userId = `usr-${Date.now()}-${i}`;
+
+    const newUser: User = {
+      id: userId,
+      email,
+      password_hash: password,
+      full_name: `${randomPick.name} #${uniqueNum.toString().slice(-2)}`,
+      role: 'student',
+      phone: `+1 (555) ${Math.floor(100 + Math.random() * 900)}-${Math.floor(1000 + Math.random() * 9000)}`,
+      created_at: new Date().toISOString(),
+    };
+    users.push(newUser);
+
+    let allocatedRoomId: string | null = null;
+    if (autoAllocateRoom) {
+      const availableRoom = rooms.find(r => {
+        const occ = students.filter(s => s.room_id === r.id).length;
+        return occ < r.capacity && r.status !== 'maintenance';
+      });
+      if (availableRoom) {
+        allocatedRoomId = availableRoom.id;
+      }
+    }
+
+    const newStudentProfile: Student = {
+      id: `std-${Date.now()}-${i}`,
+      user_id: userId,
+      full_name: newUser.full_name,
+      email: newUser.email,
+      enrollment_no: `CS-2026-${uniqueNum}`,
+      department: randomPick.dept,
+      year_of_study: Math.floor(1 + Math.random() * 4),
+      gender: randomPick.gender,
+      emergency_contact: `+1 (555) 900-${uniqueNum} (Parent)`,
+      blood_group: bloodGroups[Math.floor(Math.random() * bloodGroups.length)],
+      room_id: allocatedRoomId,
+      hostel_name: 'Horizon Hall',
+      created_at: new Date().toISOString(),
+    };
+    students.push(newStudentProfile);
+
+    if (allocatedRoomId) {
+      allocations.push({
+        id: `alc-${Date.now()}-${i}`,
+        student_id: newStudentProfile.id,
+        room_id: allocatedRoomId,
+        allocated_by: 'usr-warden-1',
+        allocation_date: new Date().toISOString().split('T')[0],
+        status: 'active',
+        notes: 'Automated test room assignment',
+      });
+      updateRoomStatus(allocatedRoomId);
+    }
+
+    createdUsers.push({
+      user: {
+        id: newUser.id,
+        email: newUser.email,
+        full_name: newUser.full_name,
+        role: newUser.role,
+        phone: newUser.phone,
+        password: password,
+      },
+      studentProfile: newStudentProfile,
+      token: `token-${newUser.id}-${Date.now()}`,
+    });
+  }
+
+  // Return the first created user for immediate login if single, or full batch
+  const primary = createdUsers[0];
+  return res.status(201).json({
+    message: `Successfully automated registration for ${targetCount} student(s)`,
+    token: primary.token,
+    user: primary.user,
+    studentProfile: primary.studentProfile,
+    batch: createdUsers,
+  });
+});
+
+// AUTOMATION: Get All Quick Personas for 1-Click Login
+app.get('/api/auth/test-personas', (_req: Request, res: Response) => {
+  const personas = [
+    {
+      id: 'usr-warden-1',
+      full_name: 'Dr. Robert Vance',
+      email: 'warden@hostelsync.edu',
+      password: 'admin123',
+      role: 'warden',
+      tag: 'Chief Warden',
+      description: 'Hostel administrator with full management access',
+    },
+    {
+      id: 'usr-student-1',
+      full_name: 'Alex Morgan',
+      email: 'student@hostelsync.edu',
+      password: 'student123',
+      role: 'student',
+      tag: 'Resident • Room A-204',
+      description: 'Senior resident with room allocation & roommates',
+    },
+    {
+      id: 'usr-student-2',
+      full_name: 'Priya Sharma',
+      email: 'priya@hostelsync.edu',
+      password: 'student123',
+      role: 'student',
+      tag: 'Resident • Room B-102',
+      description: 'Engineering student in Pinnacle Tower',
+    },
+    {
+      id: 'usr-staff-1',
+      full_name: 'David Miller',
+      email: 'staff@hostelsync.edu',
+      password: 'staff123',
+      role: 'staff',
+      tag: 'Staff • Electrician',
+      description: 'Lead maintenance technician for electrical systems',
+    },
+    {
+      id: 'usr-staff-2',
+      full_name: 'Carlos Mendez',
+      email: 'carlos@hostelsync.edu',
+      password: 'staff123',
+      role: 'staff',
+      tag: 'Staff • Plumber',
+      description: 'Senior technician for plumbing & drainage repairs',
+    },
+  ];
+
+  // Include any newly registered student users (up to 5 recent)
+  const recentCustomStudents = users
+    .filter(u => u.role === 'student' && !['usr-student-1', 'usr-student-2', 'usr-student-3', 'usr-student-4', 'usr-student-5'].includes(u.id))
+    .slice(-5)
+    .reverse()
+    .map(u => {
+      const student = students.find(s => s.user_id === u.id);
+      const room = student?.room_id ? rooms.find(r => r.id === student.room_id) : null;
+      return {
+        id: u.id,
+        full_name: u.full_name,
+        email: u.email,
+        password: u.password_hash,
+        role: u.role,
+        tag: room ? `Student • Room ${room.room_number}` : 'Registered Student',
+        description: `Enrolled in ${student?.department || 'Engineering'}`,
+      };
+    });
+
+  return res.json([...personas, ...recentCustomStudents]);
+});
+
 app.post('/api/auth/logout', (_req: Request, res: Response) => {
   return res.json({ message: 'Logged out successfully' });
 });

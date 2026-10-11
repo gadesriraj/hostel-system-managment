@@ -12,6 +12,7 @@ interface AuthContextType {
   registerStudent: (data: any) => Promise<void>;
   logout: () => void;
   switchDemoRole: (role: 'warden' | 'student' | 'staff', subOption?: string) => Promise<void>;
+  automateRegisterAndLogin: (options?: { autoAllocateRoom?: boolean }) => Promise<any>;
   refreshProfile: () => Promise<void>;
 }
 
@@ -126,6 +127,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const automateRegisterAndLogin = async (options?: { autoAllocateRoom?: boolean }) => {
+    setIsLoading(true);
+    try {
+      const data = await api.automateRegister({ count: 1, role: 'student', autoAllocateRoom: options?.autoAllocateRoom ?? true });
+      setToken(data.token);
+      setUser(data.user);
+      setStudentProfile(data.studentProfile || null);
+      setStaffProfile(null);
+
+      localStorage.setItem('hostelsync_token', data.token);
+      localStorage.setItem('hostelsync_user', JSON.stringify(data.user));
+      if (data.studentProfile) {
+        localStorage.setItem('hostelsync_student', JSON.stringify(data.studentProfile));
+      }
+      return data;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const refreshProfile = async () => {
     if (!user) return;
     try {
@@ -151,6 +172,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         registerStudent,
         logout,
         switchDemoRole,
+        automateRegisterAndLogin,
         refreshProfile,
       }}
     >

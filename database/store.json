@@ -241,6 +241,47 @@
         "Wi-Fi",
         "Attached Washroom"
       ]
+    },
+    {
+      "id": "rm-1791785598096",
+      "room_number": "Test-999",
+      "hostel_name": "Horizon Hall",
+      "block": "Block A",
+      "floor": 1,
+      "capacity": 2,
+      "type": "Standard Double",
+      "status": "available",
+      "amenities": [
+        "WiFi"
+      ]
+    },
+    {
+      "id": "rm-1791785813270",
+      "room_number": "301",
+      "hostel_name": "Horizon Hall",
+      "block": "Block A",
+      "floor": 1,
+      "capacity": 2,
+      "type": "Standard Double",
+      "status": "available",
+      "amenities": [
+        "High-speed Wi-Fi",
+        "Study Table"
+      ]
+    },
+    {
+      "id": "rm-1791785877588",
+      "room_number": "Room-New-101",
+      "hostel_name": "Horizon Hall",
+      "block": "Block A",
+      "floor": 1,
+      "capacity": 2,
+      "type": "Standard Double",
+      "status": "available",
+      "amenities": [
+        "High-speed Wi-Fi",
+        "Study Table"
+      ]
     }
   ],
   "students": [
@@ -596,6 +637,17 @@
   ],
   "notices": [
     {
+      "id": "not-1791785757424",
+      "title": "Test Notice",
+      "content": "Test Notice Content",
+      "category": "General",
+      "priority": "normal",
+      "target_audience": "all",
+      "published_by_name": "Hostel Warden Office",
+      "is_published": true,
+      "created_at": "2026-10-12T06:15:57.424Z"
+    },
+    {
       "id": "not-1",
       "title": "Water Supply Maintenance Schedule - Blocks A & B",
       "content": "Routine overhead tank cleaning and chlorination will occur on Wednesday, 10:00 AM to 02:00 PM. Please store sufficient drinking water in advance.",
@@ -703,6 +755,87 @@
       "type": "visitor_status",
       "is_read": false,
       "created_at": "2026-10-04T12:00:00Z"
+    },
+    {
+      "id": "ntf-1791785757424-std-1",
+      "user_id": "usr-student-1",
+      "title": "Notice: Test Notice",
+      "message": "Test Notice Content...",
+      "type": "notice",
+      "is_read": false,
+      "created_at": "2026-10-12T06:15:57.424Z"
+    },
+    {
+      "id": "ntf-1791785757424-std-2",
+      "user_id": "usr-student-2",
+      "title": "Notice: Test Notice",
+      "message": "Test Notice Content...",
+      "type": "notice",
+      "is_read": false,
+      "created_at": "2026-10-12T06:15:57.424Z"
+    },
+    {
+      "id": "ntf-1791785757424-std-3",
+      "user_id": "usr-student-3",
+      "title": "Notice: Test Notice",
+      "message": "Test Notice Content...",
+      "type": "notice",
+      "is_read": false,
+      "created_at": "2026-10-12T06:15:57.424Z"
+    },
+    {
+      "id": "ntf-1791785757424-std-4",
+      "user_id": "usr-student-4",
+      "title": "Notice: Test Notice",
+      "message": "Test Notice Content...",
+      "type": "notice",
+      "is_read": false,
+      "created_at": "2026-10-12T06:15:57.424Z"
+    },
+    {
+      "id": "ntf-1791785757424-std-5",
+      "user_id": "usr-student-5",
+      "title": "Notice: Test Notice",
+      "message": "Test Notice Content...",
+      "type": "notice",
+      "is_read": false,
+      "created_at": "2026-10-12T06:15:57.424Z"
+    },
+    {
+      "id": "ntf-1791785757424-std-1791701917092",
+      "user_id": "usr-1791701917092",
+      "title": "Notice: Test Notice",
+      "message": "Test Notice Content...",
+      "type": "notice",
+      "is_read": false,
+      "created_at": "2026-10-12T06:15:57.424Z"
+    },
+    {
+      "id": "ntf-1791785757424-std-1791706454831",
+      "user_id": "usr-1791706454831",
+      "title": "Notice: Test Notice",
+      "message": "Test Notice Content...",
+      "type": "notice",
+      "is_read": false,
+      "created_at": "2026-10-12T06:15:57.424Z"
+    },
+    {
+      "id": "ntf-1791785757424-std-1791706559713",
+      "user_id": "usr-1791706559713",
+      "title": "Notice: Test Notice",
+      "message": "Test Notice Content...",
+      "type": "notice",
+      "is_read": false,
+      "created_at": "2026-10-12T06:15:57.424Z"
+    },
+    {
+      "id": "ntf-1791785757424-std-1791707064524",
+      "user_id": "usr-1791707064524",
+      "title": "Notice: Test Notice",
+      "message": "Test Notice Content...",
+      "type": "notice",
+      "is_read": false,
+      "created_at": "2026-10-12T06:15:57.424Z"
     }
   ]
 }

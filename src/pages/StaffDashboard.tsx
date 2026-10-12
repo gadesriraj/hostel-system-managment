@@ -21,9 +21,10 @@ import { MetricCard } from '../components/MetricCard';
 
 interface StaffDashboardProps {
   activeTab: string;
+  onSelectTab?: (tab: string) => void;
 }
 
-export const StaffDashboard: React.FC<StaffDashboardProps> = ({ activeTab }) => {
+export const StaffDashboard: React.FC<StaffDashboardProps> = ({ activeTab, onSelectTab }) => {
   const { user, staffProfile } = useAuth();
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(true);

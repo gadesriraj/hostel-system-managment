@@ -49,12 +49,15 @@ import {
 import { StatusBadge } from '../components/StatusBadge';
 import { MetricCard } from '../components/MetricCard';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { useAuth } from '../context/AuthContext';
 
 interface WardenDashboardProps {
   activeTab: string;
+  onSelectTab?: (tab: string) => void;
 }
 
-export const WardenDashboard: React.FC<WardenDashboardProps> = ({ activeTab }) => {
+export const WardenDashboard: React.FC<WardenDashboardProps> = ({ activeTab, onSelectTab }) => {
+  const { user } = useAuth();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [students, setStudents] = useState<any[]>([]);
   const [staff, setStaff] = useState<StaffProfile[]>([]);
@@ -68,6 +71,8 @@ export const WardenDashboard: React.FC<WardenDashboardProps> = ({ activeTab }) =
   const [maintenanceAnalytics, setMaintenanceAnalytics] = useState<MaintenanceAnalytics | null>(null);
 
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [modalError, setModalError] = useState('');
   const [toastMessage, setToastMessage] = useState('');
 
   // Search & Filters
@@ -90,7 +95,7 @@ export const WardenDashboard: React.FC<WardenDashboardProps> = ({ activeTab }) =
     block: 'Block A',
     floor: 1,
     capacity: 2,
-    type: 'Standard Double',
+    type: 'Standard Double (Non-AC)',
     amenities: 'High-speed Wi-Fi, Study Table',
   });
 
@@ -134,10 +139,10 @@ export const WardenDashboard: React.FC<WardenDashboardProps> = ({ activeTab }) =
     loadAllData();
   }, []);
 
-  const loadAllData = async () => {
-    setLoading(true);
+  const loadAllData = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
-      const [rList, sList, stList, cList, vList, nList, rA, cA, mA] = await Promise.all([
+      const results = await Promise.allSettled([
         api.getRooms(),
         api.getStudents(),
         api.getStaff(),
@@ -149,15 +154,15 @@ export const WardenDashboard: React.FC<WardenDashboardProps> = ({ activeTab }) =
         api.getMaintenanceAnalytics(),
       ]);
 
-      setRooms(rList);
-      setStudents(sList);
-      setStaff(stList);
-      setComplaints(cList);
-      setVisitors(vList);
-      setNotices(nList);
-      setRoomAnalytics(rA);
-      setComplaintAnalytics(cA);
-      setMaintenanceAnalytics(mA);
+      if (results[0].status === 'fulfilled') setRooms(results[0].value);
+      if (results[1].status === 'fulfilled') setStudents(results[1].value);
+      if (results[2].status === 'fulfilled') setStaff(results[2].value);
+      if (results[3].status === 'fulfilled') setComplaints(results[3].value);
+      if (results[4].status === 'fulfilled') setVisitors(results[4].value);
+      if (results[5].status === 'fulfilled') setNotices(results[5].value);
+      if (results[6].status === 'fulfilled') setRoomAnalytics(results[6].value);
+      if (results[7].status === 'fulfilled') setComplaintAnalytics(results[7].value);
+      if (results[8].status === 'fulfilled') setMaintenanceAnalytics(results[8].value);
     } catch (err) {
       console.error('Error loading warden data:', err);
     } finally {
@@ -167,40 +172,117 @@ export const WardenDashboard: React.FC<WardenDashboardProps> = ({ activeTab }) =
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(''), 4000);
+    setTimeout(() => setToastMessage(''), 4500);
+  };
+
+  const getNextAvailableRoomNumber = (block = 'Block A') => {
+    const blockLetter = block.includes('B') ? 'B' : block.includes('C') ? 'C' : 'A';
+    for (let floor = 1; floor <= 5; floor++) {
+      for (let room = 1; room <= 9; room++) {
+        const candidate = `${blockLetter}-${floor}0${room}`;
+        if (!rooms.some(r => r.room_number.toLowerCase() === candidate.toLowerCase())) {
+          return candidate;
+        }
+      }
+    }
+    return `${blockLetter}-${Date.now().toString().slice(-3)}`;
+  };
+
+  const handleOpenAddRoomModal = (preferredBlock = 'Block A') => {
+    setModalError('');
+    setEditingRoom(null);
+    const suggested = getNextAvailableRoomNumber(preferredBlock);
+    setRoomForm({
+      room_number: suggested,
+      hostel_name: 'Horizon Hall',
+      block: preferredBlock,
+      floor: 1,
+      capacity: 2,
+      type: 'Standard Double (Non-AC)',
+      amenities: 'High-speed Wi-Fi, Study Table',
+    });
+    setShowRoomModal(true);
+  };
+
+  const handleOpenNoticeModal = (template?: { title: string; content: string; category: string; priority: string }) => {
+    setModalError('');
+    if (template) {
+      setNoticeForm({
+        title: template.title,
+        content: template.content,
+        category: template.category,
+        priority: template.priority,
+        target_audience: 'all',
+      });
+    } else {
+      setNoticeForm({
+        title: '',
+        content: '',
+        category: 'General',
+        priority: 'normal',
+        target_audience: 'all',
+      });
+    }
+    setShowNoticeModal(true);
   };
 
   // ROOM CRUD
   const handleSaveRoom = async (e: React.FormEvent) => {
     e.preventDefault();
+    setModalError('');
+
+    const cleanNum = roomForm.room_number.trim();
+    if (!cleanNum) {
+      setModalError('Please enter a room number (e.g. A-301).');
+      return;
+    }
+
+    const isDuplicate = rooms.some(
+      r => r.room_number.toLowerCase() === cleanNum.toLowerCase() && (!editingRoom || r.id !== editingRoom.id)
+    );
+    if (isDuplicate) {
+      const suggested = getNextAvailableRoomNumber(roomForm.block);
+      setModalError(`Room "${cleanNum}" already exists. Suggested next available room number: ${suggested}`);
+      return;
+    }
+
+    const capNum = Number(roomForm.capacity);
+    if (!capNum || capNum < 1) {
+      setModalError('Bed capacity must be at least 1.');
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
-      const amenitiesList = roomForm.amenities
+      const amenitiesList = (roomForm.amenities || '')
         .split(',')
         .map(a => a.trim())
         .filter(Boolean);
 
       if (editingRoom) {
-        await api.updateRoom(editingRoom.id, {
-          room_number: roomForm.room_number,
-          hostel_name: roomForm.hostel_name,
-          block: roomForm.block,
-          floor: Number(roomForm.floor),
-          capacity: Number(roomForm.capacity),
-          type: roomForm.type,
-          amenities: amenitiesList,
+        const updated = await api.updateRoom(editingRoom.id, {
+          room_number: cleanNum,
+          hostel_name: roomForm.hostel_name || 'Horizon Hall',
+          block: roomForm.block || 'Block A',
+          floor: Number(roomForm.floor) || 1,
+          capacity: capNum,
+          type: roomForm.type || 'Standard Double (Non-AC)',
+          amenities: amenitiesList.length ? amenitiesList : ['High-speed Wi-Fi', 'Study Table'],
         });
-        showToast(`Room ${roomForm.room_number} updated successfully.`);
+        setRooms(prev => prev.map(r => (r.id === editingRoom.id ? { ...r, ...updated } : r)));
+        showToast(`Room ${cleanNum} updated successfully.`);
       } else {
-        await api.createRoom({
-          room_number: roomForm.room_number,
-          hostel_name: roomForm.hostel_name,
-          block: roomForm.block,
-          floor: Number(roomForm.floor),
-          capacity: Number(roomForm.capacity),
-          type: roomForm.type,
-          amenities: amenitiesList,
+        const created = await api.createRoom({
+          room_number: cleanNum,
+          hostel_name: roomForm.hostel_name || 'Horizon Hall',
+          block: roomForm.block || 'Block A',
+          floor: Number(roomForm.floor) || 1,
+          capacity: capNum,
+          type: roomForm.type || 'Standard Double (Non-AC)',
+          amenities: amenitiesList.length ? amenitiesList : ['High-speed Wi-Fi', 'Study Table'],
         });
-        showToast(`Room ${roomForm.room_number} created.`);
+        setRooms(prev => [created, ...prev]);
+        showToast(`Room ${cleanNum} added to hostel inventory.`);
       }
 
       setShowRoomModal(false);
@@ -211,21 +293,27 @@ export const WardenDashboard: React.FC<WardenDashboardProps> = ({ activeTab }) =
         block: 'Block A',
         floor: 1,
         capacity: 2,
-        type: 'Standard Double',
+        type: 'Standard Double (Non-AC)',
         amenities: 'High-speed Wi-Fi, Study Table',
       });
-      loadAllData();
+      if (onSelectTab) {
+        onSelectTab('rooms');
+      }
+      loadAllData(true);
     } catch (err: any) {
-      showToast(err.message || 'Failed to save room');
+      setModalError(err.message || 'Failed to save room. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleDeleteRoom = async () => {
     try {
       await api.deleteRoom(confirmDelete.id);
+      setRooms(prev => prev.filter(r => r.id !== confirmDelete.id));
       setConfirmDelete({ ...confirmDelete, isOpen: false });
       showToast('Room removed from hostel system.');
-      loadAllData();
+      loadAllData(true);
     } catch (err: any) {
       showToast(err.message || 'Failed to delete room');
     }
@@ -234,29 +322,56 @@ export const WardenDashboard: React.FC<WardenDashboardProps> = ({ activeTab }) =
   // ALLOCATION
   const handleAllocate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedStudentForAlloc || !targetRoomId) return;
+    setModalError('');
+    if (!selectedStudentForAlloc) {
+      setModalError('No student selected for allocation.');
+      return;
+    }
+    if (!targetRoomId) {
+      setModalError('Please select a vacant room to allocate this student.');
+      return;
+    }
 
+    setIsSubmitting(true);
     try {
       await api.allocateRoom({
         student_id: selectedStudentForAlloc.id,
         room_id: targetRoomId,
       });
+      const allocatedRoom = rooms.find(r => r.id === targetRoomId);
+      setStudents(prev =>
+        prev.map(s =>
+          s.id === selectedStudentForAlloc.id
+            ? {
+                ...s,
+                room_id: targetRoomId,
+                room_number: allocatedRoom?.room_number || '',
+                block: allocatedRoom?.block || '',
+              }
+            : s
+        )
+      );
       setShowAllocateModal(false);
       setSelectedStudentForAlloc(null);
       setTargetRoomId('');
       showToast('Student successfully allocated to room.');
-      loadAllData();
+      loadAllData(true);
     } catch (err: any) {
-      showToast(err.message || 'Room allocation failed');
+      setModalError(err.message || 'Room allocation failed');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleDeallocate = async () => {
     try {
       await api.deallocateRoom(confirmDelete.id);
+      setStudents(prev =>
+        prev.map(s => (s.id === confirmDelete.id ? { ...s, room_id: null, room_number: null } : s))
+      );
       setConfirmDelete({ ...confirmDelete, isOpen: false });
       showToast('Student room allocation released.');
-      loadAllData();
+      loadAllData(true);
     } catch (err: any) {
       showToast(err.message || 'Failed to release room allocation');
     }
@@ -265,20 +380,36 @@ export const WardenDashboard: React.FC<WardenDashboardProps> = ({ activeTab }) =
   // COMPLAINT ASSIGNMENT
   const handleAssignStaff = async (e: React.FormEvent) => {
     e.preventDefault();
+    setModalError('');
     if (!selectedComplaint) return;
+    if (!assignedStaffId) {
+      setModalError('Please choose a technician from the staff list.');
+      return;
+    }
 
+    setIsSubmitting(true);
     try {
       await api.updateComplaint(selectedComplaint.id, {
         assigned_to: assignedStaffId,
-        status: assignedStaffId ? 'assigned' : 'pending',
+        status: 'assigned',
       });
+      const tech = staff.find(st => st.id === assignedStaffId);
+      setComplaints(prev =>
+        prev.map(c =>
+          c.id === selectedComplaint.id
+            ? { ...c, assigned_to: assignedStaffId, assigned_to_name: tech?.full_name || '', status: 'assigned' }
+            : c
+        )
+      );
       setShowAssignModal(false);
       setSelectedComplaint(null);
       setAssignedStaffId('');
       showToast('Maintenance task assigned to technician.');
-      loadAllData();
+      loadAllData(true);
     } catch (err: any) {
-      showToast(err.message || 'Failed to assign complaint');
+      setModalError(err.message || 'Failed to assign complaint');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -287,10 +418,11 @@ export const WardenDashboard: React.FC<WardenDashboardProps> = ({ activeTab }) =
     try {
       await api.updateVisitorStatus(id, {
         status: 'approved',
-        approved_by: 'usr-warden-1',
+        approved_by: user?.id || 'usr-warden-1',
       });
+      setVisitors(prev => prev.map(v => (v.id === id ? { ...v, status: 'approved' } : v)));
       showToast('Visitor pass approved.');
-      loadAllData();
+      loadAllData(true);
     } catch (err: any) {
       showToast(err.message || 'Failed to approve visitor');
     }
@@ -298,32 +430,62 @@ export const WardenDashboard: React.FC<WardenDashboardProps> = ({ activeTab }) =
 
   const handleRejectVisitor = async () => {
     if (!rejectVisitorId) return;
+    setIsSubmitting(true);
     try {
       await api.updateVisitorStatus(rejectVisitorId, {
         status: 'rejected',
         rejection_reason: rejectionReason || 'Security policy restriction',
       });
+      setVisitors(prev =>
+        prev.map(v =>
+          v.id === rejectVisitorId
+            ? { ...v, status: 'rejected', rejection_reason: rejectionReason || 'Security policy restriction' }
+            : v
+        )
+      );
       setRejectVisitorId(null);
       setRejectionReason('');
       showToast('Visitor request rejected.');
-      loadAllData();
+      loadAllData(true);
     } catch (err: any) {
       showToast(err.message || 'Failed to reject visitor');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   // NOTICES
   const handleSaveNotice = async (e: React.FormEvent) => {
     e.preventDefault();
+    setModalError('');
+
+    const cleanTitle = noticeForm.title.trim();
+    const cleanContent = noticeForm.content.trim();
+    if (!cleanTitle) {
+      setModalError('Please enter a headline for the notice.');
+      return;
+    }
+    if (!cleanContent) {
+      setModalError('Please enter detailed content for the announcement.');
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
-      await api.createNotice({
-        title: noticeForm.title,
-        content: noticeForm.content,
+      const author = user?.full_name
+        ? `${user.full_name} (${user.role === 'warden' ? 'Chief Warden' : 'Office'})`
+        : 'Dr. Robert Vance (Chief Warden)';
+
+      const created = await api.createNotice({
+        title: cleanTitle,
+        content: cleanContent,
         category: noticeForm.category,
         priority: noticeForm.priority,
         target_audience: noticeForm.target_audience,
-        published_by_name: 'Dr. Robert Vance (Chief Warden)',
+        published_by_name: author,
       });
+
+      setNotices(prev => [created, ...prev]);
       setShowNoticeModal(false);
       setNoticeForm({
         title: '',
@@ -332,19 +494,22 @@ export const WardenDashboard: React.FC<WardenDashboardProps> = ({ activeTab }) =
         priority: 'normal',
         target_audience: 'all',
       });
-      showToast('Notice published to hostel board.');
-      loadAllData();
+      showToast('Notice published successfully to hostel board.');
+      loadAllData(true);
     } catch (err: any) {
-      showToast(err.message || 'Failed to publish notice');
+      setModalError(err.message || 'Failed to publish notice. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleDeleteNotice = async () => {
     try {
       await api.deleteNotice(confirmDelete.id);
+      setNotices(prev => prev.filter(n => n.id !== confirmDelete.id));
       setConfirmDelete({ ...confirmDelete, isOpen: false });
       showToast('Notice deleted.');
-      loadAllData();
+      loadAllData(true);
     } catch (err: any) {
       showToast(err.message || 'Failed to delete notice');
     }
@@ -412,12 +577,12 @@ export const WardenDashboard: React.FC<WardenDashboardProps> = ({ activeTab }) =
     <div className="space-y-6">
       {/* Toast */}
       {toastMessage && (
-        <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center justify-between shadow-xs">
+        <div className="fixed top-5 right-5 z-[100] max-w-md p-3.5 bg-emerald-600 text-white rounded-xl text-xs flex items-center justify-between shadow-xl border border-emerald-500 animate-in fade-in slide-in-from-top-2">
           <div className="flex items-center gap-2 font-medium">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            <CheckCircle2 className="w-4 h-4 text-white shrink-0" />
             <span>{toastMessage}</span>
           </div>
-          <button onClick={() => setToastMessage('')} className="font-bold text-emerald-700">
+          <button onClick={() => setToastMessage('')} className="ml-3 font-bold text-white hover:opacity-80 cursor-pointer">
             ×
           </button>
         </div>
@@ -469,7 +634,17 @@ export const WardenDashboard: React.FC<WardenDashboardProps> = ({ activeTab }) =
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <button
                   onClick={() => {
+                    setModalError('');
                     setEditingRoom(null);
+                    setRoomForm({
+                      room_number: '',
+                      hostel_name: 'Horizon Hall',
+                      block: 'Block A',
+                      floor: 1,
+                      capacity: 2,
+                      type: 'Standard Double (Non-AC)',
+                      amenities: 'High-speed Wi-Fi, Study Table',
+                    });
                     setShowRoomModal(true);
                   }}
                   className="p-3.5 bg-slate-50 hover:bg-indigo-50 border border-gray-200 hover:border-indigo-300 rounded-xl text-left transition-all cursor-pointer group"
@@ -480,7 +655,17 @@ export const WardenDashboard: React.FC<WardenDashboardProps> = ({ activeTab }) =
                 </button>
 
                 <button
-                  onClick={() => setShowNoticeModal(true)}
+                  onClick={() => {
+                    setModalError('');
+                    setNoticeForm({
+                      title: '',
+                      content: '',
+                      category: 'General',
+                      priority: 'normal',
+                      target_audience: 'all',
+                    });
+                    setShowNoticeModal(true);
+                  }}
                   className="p-3.5 bg-slate-50 hover:bg-purple-50 border border-gray-200 hover:border-purple-300 rounded-xl text-left transition-all cursor-pointer group"
                 >
                   <Megaphone className="w-5 h-5 text-purple-600 mb-2 group-hover:scale-110 transition-transform" />
@@ -628,6 +813,7 @@ export const WardenDashboard: React.FC<WardenDashboardProps> = ({ activeTab }) =
             </div>
             <button
               onClick={() => {
+                setModalError('');
                 setEditingRoom(null);
                 setRoomForm({
                   room_number: '',
@@ -635,7 +821,7 @@ export const WardenDashboard: React.FC<WardenDashboardProps> = ({ activeTab }) =
                   block: 'Block A',
                   floor: 1,
                   capacity: 2,
-                  type: 'Standard Double',
+                  type: 'Standard Double (Non-AC)',
                   amenities: 'High-speed Wi-Fi, Study Table',
                 });
                 setShowRoomModal(true);
@@ -1234,7 +1420,14 @@ export const WardenDashboard: React.FC<WardenDashboardProps> = ({ activeTab }) =
             <h3 className="text-lg font-bold text-gray-900 mb-1">
               {editingRoom ? `Edit Room ${editingRoom.room_number}` : 'Add New Hostel Room'}
             </h3>
-            <p className="text-xs text-gray-500 mb-4">Set room capacity, amenities, and floor</p>
+            <p className="text-xs text-gray-500 mb-3">Set room capacity, amenities, and floor</p>
+
+            {modalError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs flex items-center gap-2 mb-3">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                <span>{modalError}</span>
+              </div>
+            )}
 
             <form onSubmit={handleSaveRoom} className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
@@ -1317,15 +1510,20 @@ export const WardenDashboard: React.FC<WardenDashboardProps> = ({ activeTab }) =
               <div className="flex justify-end gap-2 pt-3">
                 <button
                   type="button"
-                  onClick={() => setShowRoomModal(false)}
-                  className="px-4 py-2 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg"
+                  onClick={() => {
+                    setModalError('');
+                    setShowRoomModal(false);
+                  }}
+                  className="px-4 py-2 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg"
+                  disabled={isSubmitting}
+                  className="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-lg flex items-center gap-1.5 cursor-pointer"
                 >
+                  {isSubmitting && <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />}
                   {editingRoom ? 'Update Room' : 'Create Room'}
                 </button>
               </div>
@@ -1339,9 +1537,16 @@ export const WardenDashboard: React.FC<WardenDashboardProps> = ({ activeTab }) =
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100">
             <h3 className="text-lg font-bold text-gray-900 mb-1">Allocate Room</h3>
-            <p className="text-xs text-gray-500 mb-4">
+            <p className="text-xs text-gray-500 mb-3">
               Student: <span className="font-semibold text-gray-900">{selectedStudentForAlloc.full_name}</span> ({selectedStudentForAlloc.enrollment_no})
             </p>
+
+            {modalError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs flex items-center gap-2 mb-3">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                <span>{modalError}</span>
+              </div>
+            )}
 
             <form onSubmit={handleAllocate} className="space-y-4">
               <div>
@@ -1366,16 +1571,20 @@ export const WardenDashboard: React.FC<WardenDashboardProps> = ({ activeTab }) =
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowAllocateModal(false)}
-                  className="px-4 py-2 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg"
+                  onClick={() => {
+                    setModalError('');
+                    setShowAllocateModal(false);
+                  }}
+                  className="px-4 py-2 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={!targetRoomId}
-                  className="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-lg"
+                  disabled={!targetRoomId || isSubmitting}
+                  className="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-lg flex items-center gap-1.5 cursor-pointer"
                 >
+                  {isSubmitting && <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />}
                   Confirm Allocation
                 </button>
               </div>
@@ -1392,6 +1601,13 @@ export const WardenDashboard: React.FC<WardenDashboardProps> = ({ activeTab }) =
             <p className="text-xs text-gray-500 mb-3">
               Ticket: <span className="font-mono font-bold text-indigo-600">{selectedComplaint.complaint_code}</span> ({selectedComplaint.category}) in Room {selectedComplaint.room_number}
             </p>
+
+            {modalError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs flex items-center gap-2 mb-3">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                <span>{modalError}</span>
+              </div>
+            )}
 
             <form onSubmit={handleAssignStaff} className="space-y-4">
               <div>
@@ -1414,16 +1630,20 @@ export const WardenDashboard: React.FC<WardenDashboardProps> = ({ activeTab }) =
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowAssignModal(false)}
-                  className="px-4 py-2 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg"
+                  onClick={() => {
+                    setModalError('');
+                    setShowAssignModal(false);
+                  }}
+                  className="px-4 py-2 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={!assignedStaffId}
-                  className="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-lg"
+                  disabled={!assignedStaffId || isSubmitting}
+                  className="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-lg flex items-center gap-1.5 cursor-pointer"
                 >
+                  {isSubmitting && <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />}
                   Assign Ticket
                 </button>
               </div>
@@ -1437,7 +1657,14 @@ export const WardenDashboard: React.FC<WardenDashboardProps> = ({ activeTab }) =
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-gray-100">
             <h3 className="text-lg font-bold text-gray-900 mb-1">Publish Hostel Announcement</h3>
-            <p className="text-xs text-gray-500 mb-4">Broadcast important notice to student and staff portals</p>
+            <p className="text-xs text-gray-500 mb-3">Broadcast important notice to student and staff portals</p>
+
+            {modalError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs flex items-center gap-2 mb-3">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                <span>{modalError}</span>
+              </div>
+            )}
 
             <form onSubmit={handleSaveNotice} className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
@@ -1496,15 +1723,20 @@ export const WardenDashboard: React.FC<WardenDashboardProps> = ({ activeTab }) =
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowNoticeModal(false)}
-                  className="px-4 py-2 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg"
+                  onClick={() => {
+                    setModalError('');
+                    setShowNoticeModal(false);
+                  }}
+                  className="px-4 py-2 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg"
+                  disabled={isSubmitting}
+                  className="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-lg flex items-center gap-1.5 cursor-pointer"
                 >
+                  {isSubmitting && <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />}
                   Publish Notice
                 </button>
               </div>

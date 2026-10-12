@@ -27,9 +27,10 @@ import { MetricCard } from '../components/MetricCard';
 
 interface StudentDashboardProps {
   activeTab: string;
+  onSelectTab?: (tab: string) => void;
 }
 
-export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab }) => {
+export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab, onSelectTab }) => {
   const { user, studentProfile } = useAuth();
   const [profile, setProfile] = useState<StudentProfile | null>(studentProfile);
   const [complaints, setComplaints] = useState<Complaint[]>([]);
@@ -85,7 +86,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab })
       let studentData = profile || studentProfile;
       try {
         studentData = await api.getStudent(user.id);
-        setProfile(studentData);
+        if (studentData) setProfile(studentData);
       } catch (e) {
         console.warn('Using existing student session data:', e);
         if (studentProfile) {
@@ -94,19 +95,18 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab })
         }
       }
 
-      if (studentData) {
-        const [cList, vList, nList, fList] = await Promise.all([
-          api.getComplaints({ student_id: studentData.id }).catch(() => []),
-          api.getVisitors({ student_id: studentData.id }).catch(() => []),
-          api.getNotices().catch(() => []),
-          api.getFeedback().catch(() => []),
-        ]);
+      const activeStudentId = studentData?.id || studentProfile?.id || `std-${user.id}`;
+      const [cList, vList, nList, fList] = await Promise.all([
+        api.getComplaints({ student_id: activeStudentId }).catch(() => []),
+        api.getVisitors({ student_id: activeStudentId }).catch(() => []),
+        api.getNotices().catch(() => []),
+        api.getFeedback().catch(() => []),
+      ]);
 
-        setComplaints(cList);
-        setVisitors(vList);
-        setNotices(nList);
-        setFeedbacks(fList.filter(f => f.student_id === studentData.id));
-      }
+      setComplaints(cList);
+      setVisitors(vList);
+      setNotices(nList);
+      setFeedbacks(fList.filter(f => f.student_id === activeStudentId));
     } catch (err) {
       console.error('Error loading student data:', err);
     } finally {
@@ -114,27 +114,43 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab })
     }
   };
 
+  const getEffectiveStudentId = () => {
+    return profile?.id || studentProfile?.id || `std-${user?.id || Date.now()}`;
+  };
+
   const handleCreateComplaint = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!profile) return;
+    setAlertError('');
+
+    if (!compForm.title.trim()) {
+      setAlertError('Please enter a complaint title / summary.');
+      return;
+    }
+    if (!compForm.description.trim()) {
+      setAlertError('Please enter detailed description of the maintenance issue.');
+      return;
+    }
+
+    const studentId = getEffectiveStudentId();
     setIsSubmitting(true);
     try {
-      await api.createComplaint({
-        student_id: profile.id,
+      const created = await api.createComplaint({
+        student_id: studentId,
         category: compForm.category,
-        title: compForm.title,
-        description: compForm.description,
+        title: compForm.title.trim(),
+        description: compForm.description.trim(),
         priority: compForm.priority,
       });
+
+      setComplaints(prev => [created, ...prev]);
       setShowComplaintModal(false);
       setCompForm({ category: 'Electrical', title: '', description: '', priority: 'medium' });
       setAlertSuccess('Maintenance complaint logged successfully!');
-      setTimeout(() => setAlertSuccess(''), 4000);
-      const updated = await api.getComplaints({ student_id: profile.id });
-      setComplaints(updated);
+      setTimeout(() => setAlertSuccess(''), 4500);
+      if (onSelectTab) onSelectTab('complaints');
+      loadData();
     } catch (err: any) {
-      setAlertError(err.message || 'Failed to submit complaint');
-      setTimeout(() => setAlertError(''), 4000);
+      setAlertError(err.message || 'Failed to submit complaint. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -142,19 +158,32 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab })
 
   const handleRegisterVisitor = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!profile) return;
+    setAlertError('');
+
+    if (!visForm.visitor_name.trim()) {
+      setAlertError('Please enter visitor full name.');
+      return;
+    }
+    if (!visForm.purpose.trim()) {
+      setAlertError('Please enter purpose of visit.');
+      return;
+    }
+
+    const studentId = getEffectiveStudentId();
     setIsSubmitting(true);
     try {
-      await api.registerVisitor({
-        student_id: profile.id,
-        visitor_name: visForm.visitor_name,
-        phone_number: visForm.phone_number,
+      const created = await api.registerVisitor({
+        student_id: studentId,
+        visitor_name: visForm.visitor_name.trim(),
+        phone_number: visForm.phone_number.trim(),
         relationship: visForm.relationship,
         visit_date: visForm.visit_date,
         entry_time: visForm.entry_time,
         expected_exit_time: visForm.expected_exit_time,
-        purpose: visForm.purpose,
+        purpose: visForm.purpose.trim(),
       });
+
+      setVisitors(prev => [created, ...prev]);
       setShowVisitorModal(false);
       setVisForm({
         visitor_name: '',
@@ -166,12 +195,11 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab })
         purpose: '',
       });
       setAlertSuccess('Visitor pass requested! Awaiting Warden approval.');
-      setTimeout(() => setAlertSuccess(''), 4000);
-      const updated = await api.getVisitors({ student_id: profile.id });
-      setVisitors(updated);
+      setTimeout(() => setAlertSuccess(''), 4500);
+      if (onSelectTab) onSelectTab('visitors');
+      loadData();
     } catch (err: any) {
-      setAlertError(err.message || 'Failed to register visitor');
-      setTimeout(() => setAlertError(''), 4000);
+      setAlertError(err.message || 'Failed to register visitor. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -179,26 +207,34 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab })
 
   const handleSubmitFeedback = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!profile) return;
+    setAlertError('');
+
+    if (!feedForm.comments.trim()) {
+      setAlertError('Please enter feedback comments.');
+      return;
+    }
+
+    const studentId = getEffectiveStudentId();
     setIsSubmitting(true);
     try {
-      await api.submitFeedback({
-        student_id: profile.id,
+      const created = await api.submitFeedback({
+        student_id: studentId,
         meal_type: feedForm.meal_type,
         rating: feedForm.rating,
         hygiene_rating: feedForm.hygiene_rating,
         taste_rating: feedForm.taste_rating,
-        comments: feedForm.comments,
+        comments: feedForm.comments.trim(),
       });
+
+      setFeedbacks(prev => [created, ...prev]);
       setShowFeedbackModal(false);
       setFeedForm({ meal_type: 'lunch', rating: 4, hygiene_rating: 4, taste_rating: 4, comments: '' });
       setAlertSuccess('Mess feedback submitted! Thank you.');
-      setTimeout(() => setAlertSuccess(''), 4000);
-      const updated = await api.getFeedback();
-      setFeedbacks(updated.filter(f => f.student_id === profile.id));
+      setTimeout(() => setAlertSuccess(''), 4500);
+      if (onSelectTab) onSelectTab('mess');
+      loadData();
     } catch (err: any) {
-      setAlertError(err.message || 'Failed to submit feedback');
-      setTimeout(() => setAlertError(''), 4000);
+      setAlertError(err.message || 'Failed to submit feedback. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -223,24 +259,24 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab })
     <div className="space-y-6">
       {/* Toast Banner */}
       {alertSuccess && (
-        <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center justify-between shadow-xs animate-in fade-in">
+        <div className="fixed top-5 right-5 z-[100] max-w-md p-3.5 bg-emerald-600 text-white rounded-xl text-xs flex items-center justify-between shadow-xl border border-emerald-500 animate-in fade-in slide-in-from-top-2">
           <div className="flex items-center gap-2 font-medium">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            <CheckCircle2 className="w-4 h-4 text-white shrink-0" />
             <span>{alertSuccess}</span>
           </div>
-          <button onClick={() => setAlertSuccess('')} className="text-emerald-700 hover:text-emerald-900 font-bold">
+          <button onClick={() => setAlertSuccess('')} className="ml-3 font-bold text-white hover:opacity-80 cursor-pointer">
             ×
           </button>
         </div>
       )}
 
       {alertError && (
-        <div className="p-3.5 bg-red-50 border border-red-200 text-red-800 rounded-xl text-xs flex items-center justify-between shadow-xs animate-in fade-in">
+        <div className="fixed top-5 right-5 z-[100] max-w-md p-3.5 bg-rose-600 text-white rounded-xl text-xs flex items-center justify-between shadow-xl border border-rose-500 animate-in fade-in slide-in-from-top-2">
           <div className="flex items-center gap-2 font-medium">
-            <AlertCircle className="w-4 h-4 text-red-600" />
+            <AlertCircle className="w-4 h-4 text-white shrink-0" />
             <span>{alertError}</span>
           </div>
-          <button onClick={() => setAlertError('')} className="text-red-700 hover:text-red-900 font-bold">
+          <button onClick={() => setAlertError('')} className="ml-3 font-bold text-white hover:opacity-80 cursor-pointer">
             ×
           </button>
         </div>
@@ -273,7 +309,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab })
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setShowComplaintModal(true)}
+              onClick={() => {
+                setAlertError('');
+                setShowComplaintModal(true);
+              }}
               className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <Wrench className="w-3.5 h-3.5" />
@@ -281,7 +320,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab })
             </button>
 
             <button
-              onClick={() => setShowVisitorModal(true)}
+              onClick={() => {
+                setAlertError('');
+                setShowVisitorModal(true);
+              }}
               className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
@@ -456,7 +498,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab })
               <p className="text-xs text-gray-500">Track and report issues in your room or common hostel areas</p>
             </div>
             <button
-              onClick={() => setShowComplaintModal(true)}
+              onClick={() => {
+                setAlertError('');
+                setShowComplaintModal(true);
+              }}
               className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <Plus className="w-4 h-4" />
@@ -534,7 +579,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab })
               <p className="text-xs text-gray-500">Register visits for parents, relatives, or guests with warden verification</p>
             </div>
             <button
-              onClick={() => setShowVisitorModal(true)}
+              onClick={() => {
+                setAlertError('');
+                setShowVisitorModal(true);
+              }}
               className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <Plus className="w-4 h-4" />
@@ -596,7 +644,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab })
               <p className="text-xs text-gray-500">Rate daily meals, hygiene standards, and nutritional quality</p>
             </div>
             <button
-              onClick={() => setShowFeedbackModal(true)}
+              onClick={() => {
+                setAlertError('');
+                setShowFeedbackModal(true);
+              }}
               className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <Plus className="w-4 h-4" />
@@ -683,9 +734,16 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab })
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-gray-100">
             <h3 className="text-lg font-bold text-gray-900 mb-1">Log Maintenance Complaint</h3>
-            <p className="text-xs text-gray-500 mb-4">
+            <p className="text-xs text-gray-500 mb-3">
               Our facilities team responds to high & urgent tickets within 4 hours.
             </p>
+
+            {alertError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs flex items-center gap-2 mb-3">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                <span>{alertError}</span>
+              </div>
+            )}
 
             <form onSubmit={handleCreateComplaint} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
@@ -771,9 +829,16 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab })
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-gray-100">
             <h3 className="text-lg font-bold text-gray-900 mb-1">Register Visitor Pass</h3>
-            <p className="text-xs text-gray-500 mb-4">
+            <p className="text-xs text-gray-500 mb-3">
               All guest entries require clearance from the Warden Office.
             </p>
+
+            {alertError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs flex items-center gap-2 mb-3">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                <span>{alertError}</span>
+              </div>
+            )}
 
             <form onSubmit={handleRegisterVisitor} className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
@@ -864,15 +929,18 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab })
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowVisitorModal(false)}
-                  className="px-4 py-2 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg"
+                  onClick={() => {
+                    setAlertError('');
+                    setShowVisitorModal(false);
+                  }}
+                  className="px-4 py-2 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center gap-1.5"
+                  className="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center gap-1.5 cursor-pointer"
                 >
                   {isSubmitting && <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />}
                   Request Permit
@@ -888,7 +956,14 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab })
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100">
             <h3 className="text-lg font-bold text-gray-900 mb-1">Submit Mess Rating</h3>
-            <p className="text-xs text-gray-500 mb-4">Hostel food committee reviews weekly averages</p>
+            <p className="text-xs text-gray-500 mb-3">Hostel food committee reviews weekly averages</p>
+
+            {alertError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs flex items-center gap-2 mb-3">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                <span>{alertError}</span>
+              </div>
+            )}
 
             <form onSubmit={handleSubmitFeedback} className="space-y-4">
               <div>
@@ -971,15 +1046,18 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ activeTab })
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowFeedbackModal(false)}
-                  className="px-4 py-2 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg"
+                  onClick={() => {
+                    setAlertError('');
+                    setShowFeedbackModal(false);
+                  }}
+                  className="px-4 py-2 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center gap-1.5"
+                  className="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center gap-1.5 cursor-pointer"
                 >
                   {isSubmitting && <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />}
                   Submit Rating

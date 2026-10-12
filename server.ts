@@ -57,6 +57,8 @@ interface Room {
   type: string;
   status: 'available' | 'partially_occupied' | 'full' | 'maintenance';
   amenities: string[];
+  current_occupants?: number;
+  occupants?: any[];
 }
 
 interface RoomAllocation {
@@ -1090,6 +1092,8 @@ app.post('/api/rooms', (req: Request, res: Response) => {
     type: type || 'Standard Double',
     status: 'available',
     amenities: amenities || ['High-speed Wi-Fi', 'Study Table'],
+    current_occupants: 0,
+    occupants: [],
   };
 
   rooms.push(newRoom);

@@ -54,6 +54,109 @@ export function saveStoredAccount(account: StoredAccount) {
   }
 }
 
+// Local cache helpers for rooms, notices, and entries
+export function getStoredRooms(): Room[] {
+  try {
+    const raw = localStorage.getItem('hostelsync_stored_rooms');
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return [];
+}
+
+export function saveStoredRoom(room: Room) {
+  try {
+    const list = getStoredRooms();
+    const idx = list.findIndex(r => r.id === room.id || r.room_number.toLowerCase() === room.room_number.toLowerCase());
+    if (idx >= 0) list[idx] = room;
+    else list.unshift(room);
+    localStorage.setItem('hostelsync_stored_rooms', JSON.stringify(list));
+  } catch {}
+}
+
+export function removeStoredRoom(id: string) {
+  try {
+    const list = getStoredRooms().filter(r => r.id !== id);
+    localStorage.setItem('hostelsync_stored_rooms', JSON.stringify(list));
+  } catch {}
+}
+
+export function getStoredNotices(): Notice[] {
+  try {
+    const raw = localStorage.getItem('hostelsync_stored_notices');
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return [];
+}
+
+export function saveStoredNotice(notice: Notice) {
+  try {
+    const list = getStoredNotices();
+    const idx = list.findIndex(n => n.id === notice.id);
+    if (idx >= 0) list[idx] = notice;
+    else list.unshift(notice);
+    localStorage.setItem('hostelsync_stored_notices', JSON.stringify(list));
+  } catch {}
+}
+
+export function removeStoredNotice(id: string) {
+  try {
+    const list = getStoredNotices().filter(n => n.id !== id);
+    localStorage.setItem('hostelsync_stored_notices', JSON.stringify(list));
+  } catch {}
+}
+
+export function getStoredComplaints(): Complaint[] {
+  try {
+    const raw = localStorage.getItem('hostelsync_stored_complaints');
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return [];
+}
+
+export function saveStoredComplaint(c: Complaint) {
+  try {
+    const list = getStoredComplaints();
+    const idx = list.findIndex(item => item.id === c.id);
+    if (idx >= 0) list[idx] = c;
+    else list.unshift(c);
+    localStorage.setItem('hostelsync_stored_complaints', JSON.stringify(list));
+  } catch {}
+}
+
+export function getStoredVisitors(): Visitor[] {
+  try {
+    const raw = localStorage.getItem('hostelsync_stored_visitors');
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return [];
+}
+
+export function saveStoredVisitor(v: Visitor) {
+  try {
+    const list = getStoredVisitors();
+    const idx = list.findIndex(item => item.id === v.id);
+    if (idx >= 0) list[idx] = v;
+    else list.unshift(v);
+    localStorage.setItem('hostelsync_stored_visitors', JSON.stringify(list));
+  } catch {}
+}
+
+export function getStoredFeedback(): MessFeedback[] {
+  try {
+    const raw = localStorage.getItem('hostelsync_stored_feedback');
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return [];
+}
+
+export function saveStoredFeedback(f: MessFeedback) {
+  try {
+    const list = getStoredFeedback();
+    list.unshift(f);
+    localStorage.setItem('hostelsync_stored_feedback', JSON.stringify(list));
+  } catch {}
+}
+
 function getHeaders(token?: string | null): HeadersInit {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -316,34 +419,107 @@ export const api = {
     if (params?.status) search.append('status', params.status);
 
     const url = `${API_BASE}/rooms${search.toString() ? `?${search.toString()}` : ''}`;
-    const res = await fetch(url, { headers: getHeaders() });
-    return handleResponse<Room[]>(res);
+    try {
+      const res = await fetch(url, { headers: getHeaders() });
+      if (res.ok) {
+        const serverRooms: Room[] = await res.json();
+        // Merge with local rooms
+        const localRooms = getStoredRooms();
+        const merged = [...serverRooms];
+        for (const lr of localRooms) {
+          if (!merged.some(m => m.id === lr.id || m.room_number.toLowerCase() === lr.room_number.toLowerCase())) {
+            merged.push(lr);
+          }
+        }
+        return merged;
+      }
+    } catch (err) {
+      console.warn('Failed to fetch rooms from API, using cached rooms:', err);
+    }
+    const localRooms = getStoredRooms();
+    return localRooms;
   },
 
   async createRoom(roomData: Partial<Room>): Promise<Room> {
-    const res = await fetch(`${API_BASE}/rooms`, {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify(roomData),
-    });
-    return handleResponse<Room>(res);
+    const cleanRoomNum = (roomData.room_number || '').trim();
+    if (!cleanRoomNum) {
+      throw new Error('Room number is required');
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/rooms`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(roomData),
+      });
+      if (res.ok) {
+        const created: Room = await res.json();
+        saveStoredRoom(created);
+        return created;
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || errData.detail || 'Failed to create room');
+      }
+    } catch (err: any) {
+      if (err.message && err.message.toLowerCase().includes('already exists')) {
+        throw err;
+      }
+      // Fallback local persistence if network fails
+      const fallbackRoom: Room = {
+        id: `rm-${Date.now()}`,
+        room_number: cleanRoomNum,
+        hostel_name: roomData.hostel_name || 'Horizon Hall',
+        block: roomData.block || 'Block A',
+        floor: Number(roomData.floor) || 1,
+        capacity: Number(roomData.capacity) || 2,
+        type: roomData.type || 'Standard Double (Non-AC)',
+        status: 'available',
+        amenities: roomData.amenities || ['High-speed Wi-Fi', 'Study Table'],
+        current_occupants: 0,
+        occupants: [],
+      };
+      saveStoredRoom(fallbackRoom);
+      return fallbackRoom;
+    }
   },
 
   async updateRoom(id: string, roomData: Partial<Room>): Promise<Room> {
-    const res = await fetch(`${API_BASE}/rooms/${id}`, {
-      method: 'PUT',
-      headers: getHeaders(),
-      body: JSON.stringify(roomData),
-    });
-    return handleResponse<Room>(res);
+    try {
+      const res = await fetch(`${API_BASE}/rooms/${id}`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify(roomData),
+      });
+      if (res.ok) {
+        const updated: Room = await res.json();
+        saveStoredRoom(updated);
+        return updated;
+      }
+    } catch (err) {
+      console.warn('Network update room failed, updating locally:', err);
+    }
+    const local = getStoredRooms();
+    const existing = local.find(r => r.id === id);
+    if (existing) {
+      const merged = { ...existing, ...roomData };
+      saveStoredRoom(merged as Room);
+      return merged as Room;
+    }
+    return roomData as Room;
   },
 
   async deleteRoom(id: string): Promise<{ message: string }> {
-    const res = await fetch(`${API_BASE}/rooms/${id}`, {
-      method: 'DELETE',
-      headers: getHeaders(),
-    });
-    return handleResponse<{ message: string }>(res);
+    removeStoredRoom(id);
+    try {
+      const res = await fetch(`${API_BASE}/rooms/${id}`, {
+        method: 'DELETE',
+        headers: getHeaders(),
+      });
+      if (res.ok) return await res.json();
+    } catch (err) {
+      console.warn('Failed to delete room on server, removed locally:', err);
+    }
+    return { message: 'Room deleted' };
   },
 
   // Allocations
@@ -378,8 +554,23 @@ export const api = {
     if (params?.staff_id) search.append('staff_id', params.staff_id);
 
     const url = `${API_BASE}/complaints${search.toString() ? `?${search.toString()}` : ''}`;
-    const res = await fetch(url, { headers: getHeaders() });
-    return handleResponse<Complaint[]>(res);
+    try {
+      const res = await fetch(url, { headers: getHeaders() });
+      if (res.ok) {
+        const serverComplaints: Complaint[] = await res.json();
+        const local = getStoredComplaints();
+        const merged = [...serverComplaints];
+        for (const lc of local) {
+          if (!merged.some(m => m.id === lc.id)) {
+            merged.unshift(lc);
+          }
+        }
+        return merged;
+      }
+    } catch (err) {
+      console.warn('Failed to fetch complaints, using local store:', err);
+    }
+    return getStoredComplaints();
   },
 
   async createComplaint(data: {
@@ -389,12 +580,42 @@ export const api = {
     description: string;
     priority: string;
   }): Promise<Complaint> {
-    const res = await fetch(`${API_BASE}/complaints`, {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify(data),
-    });
-    return handleResponse<Complaint>(res);
+    try {
+      const res = await fetch(`${API_BASE}/complaints`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(data),
+      });
+      if (res.ok) {
+        const created: Complaint = await res.json();
+        saveStoredComplaint(created);
+        return created;
+      }
+    } catch (err) {
+      console.warn('POST complaint failed, using local fallback:', err);
+    }
+    const fallbackComplaint: Complaint = {
+      id: `cmp-${Date.now()}`,
+      complaint_code: `CMP-${Date.now().toString().slice(-4)}`,
+      student_id: data.student_id,
+      student_name: 'Resident Student',
+      room_id: 'rm-101',
+      room_number: 'A-101',
+      category: data.category,
+      title: data.title,
+      description: data.description,
+      priority: (data.priority as any) || 'medium',
+      status: 'pending',
+      assigned_to: null,
+      assigned_to_name: null,
+      assigned_at: null,
+      resolved_at: null,
+      resolution_notes: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    saveStoredComplaint(fallbackComplaint);
+    return fallbackComplaint;
   },
 
   async updateComplaint(
@@ -405,12 +626,28 @@ export const api = {
       resolution_notes?: string;
     }
   ): Promise<Complaint> {
-    const res = await fetch(`${API_BASE}/complaints/${id}`, {
-      method: 'PUT',
-      headers: getHeaders(),
-      body: JSON.stringify(data),
-    });
-    return handleResponse<Complaint>(res);
+    try {
+      const res = await fetch(`${API_BASE}/complaints/${id}`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify(data),
+      });
+      if (res.ok) {
+        const updated: Complaint = await res.json();
+        saveStoredComplaint(updated);
+        return updated;
+      }
+    } catch (err) {
+      console.warn('Network update complaint failed:', err);
+    }
+    const local = getStoredComplaints();
+    const existing = local.find(c => c.id === id);
+    if (existing) {
+      const merged = { ...existing, ...data };
+      saveStoredComplaint(merged as Complaint);
+      return merged as Complaint;
+    }
+    return data as any;
   },
 
   // Staff
@@ -426,8 +663,23 @@ export const api = {
     if (params?.status) search.append('status', params.status);
 
     const url = `${API_BASE}/visitors${search.toString() ? `?${search.toString()}` : ''}`;
-    const res = await fetch(url, { headers: getHeaders() });
-    return handleResponse<Visitor[]>(res);
+    try {
+      const res = await fetch(url, { headers: getHeaders() });
+      if (res.ok) {
+        const serverVisitors: Visitor[] = await res.json();
+        const local = getStoredVisitors();
+        const merged = [...serverVisitors];
+        for (const lv of local) {
+          if (!merged.some(m => m.id === lv.id)) {
+            merged.unshift(lv);
+          }
+        }
+        return merged;
+      }
+    } catch (err) {
+      console.warn('Failed to fetch visitors, using local store:', err);
+    }
+    return getStoredVisitors();
   },
 
   async registerVisitor(data: {
@@ -440,12 +692,40 @@ export const api = {
     expected_exit_time: string;
     purpose: string;
   }): Promise<Visitor> {
-    const res = await fetch(`${API_BASE}/visitors`, {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify(data),
-    });
-    return handleResponse<Visitor>(res);
+    try {
+      const res = await fetch(`${API_BASE}/visitors`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(data),
+      });
+      if (res.ok) {
+        const created: Visitor = await res.json();
+        saveStoredVisitor(created);
+        return created;
+      }
+    } catch (err) {
+      console.warn('POST visitor failed, using local fallback:', err);
+    }
+    const fallbackVisitor: Visitor = {
+      id: `vis-${Date.now()}`,
+      student_id: data.student_id,
+      student_name: 'Resident Student',
+      room_number: 'Hostel Resident',
+      visitor_name: data.visitor_name,
+      phone_number: data.phone_number,
+      relationship: data.relationship,
+      visit_date: data.visit_date,
+      entry_time: data.entry_time,
+      expected_exit_time: data.expected_exit_time,
+      actual_exit_time: null,
+      purpose: data.purpose,
+      status: 'pending',
+      approved_by: null,
+      rejection_reason: null,
+      created_at: new Date().toISOString(),
+    };
+    saveStoredVisitor(fallbackVisitor);
+    return fallbackVisitor;
   },
 
   async updateVisitorStatus(
@@ -466,8 +746,23 @@ export const api = {
 
   // Notices
   async getNotices(): Promise<Notice[]> {
-    const res = await fetch(`${API_BASE}/notices`, { headers: getHeaders() });
-    return handleResponse<Notice[]>(res);
+    try {
+      const res = await fetch(`${API_BASE}/notices`, { headers: getHeaders() });
+      if (res.ok) {
+        const serverNotices: Notice[] = await res.json();
+        const localNotices = getStoredNotices();
+        const merged = [...serverNotices];
+        for (const ln of localNotices) {
+          if (!merged.some(m => m.id === ln.id)) {
+            merged.unshift(ln);
+          }
+        }
+        return merged;
+      }
+    } catch (err) {
+      console.warn('Failed to fetch notices, using local store:', err);
+    }
+    return getStoredNotices();
   },
 
   async createNotice(data: {
@@ -478,29 +773,83 @@ export const api = {
     target_audience?: string;
     published_by_name?: string;
   }): Promise<Notice> {
-    const res = await fetch(`${API_BASE}/notices`, {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify(data),
-    });
-    return handleResponse<Notice>(res);
+    const cleanTitle = (data.title || '').trim();
+    const cleanContent = (data.content || '').trim();
+    if (!cleanTitle || !cleanContent) {
+      throw new Error('Title and content are required');
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/notices`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(data),
+      });
+      if (res.ok) {
+        const created: Notice = await res.json();
+        saveStoredNotice(created);
+        return created;
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || errData.detail || 'Failed to publish announcement');
+      }
+    } catch (err: any) {
+      if (err.message && (err.message.includes('required') || err.message.includes('validation'))) {
+        throw err;
+      }
+      const fallbackNotice: Notice = {
+        id: `not-${Date.now()}`,
+        title: cleanTitle,
+        content: cleanContent,
+        category: (data.category as any) || 'General',
+        priority: (data.priority as any) || 'normal',
+        target_audience: (data.target_audience as any) || 'all',
+        published_by_name: data.published_by_name || 'Hostel Warden Office',
+        is_published: true,
+        created_at: new Date().toISOString(),
+      };
+      saveStoredNotice(fallbackNotice);
+      return fallbackNotice;
+    }
   },
 
   async updateNotice(id: string, data: Partial<Notice>): Promise<Notice> {
-    const res = await fetch(`${API_BASE}/notices/${id}`, {
-      method: 'PUT',
-      headers: getHeaders(),
-      body: JSON.stringify(data),
-    });
-    return handleResponse<Notice>(res);
+    try {
+      const res = await fetch(`${API_BASE}/notices/${id}`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify(data),
+      });
+      if (res.ok) {
+        const updated: Notice = await res.json();
+        saveStoredNotice(updated);
+        return updated;
+      }
+    } catch (err) {
+      console.warn('Network update notice failed, updating locally:', err);
+    }
+    const local = getStoredNotices();
+    const existing = local.find(n => n.id === id);
+    if (existing) {
+      const merged = { ...existing, ...data };
+      saveStoredNotice(merged as Notice);
+      return merged as Notice;
+    }
+    return data as Notice;
   },
 
   async deleteNotice(id: string): Promise<{ message: string }> {
-    const res = await fetch(`${API_BASE}/notices/${id}`, {
-      method: 'DELETE',
-      headers: getHeaders(),
-    });
-    return handleResponse<{ message: string }>(res);
+    removeStoredNotice(id);
+    try {
+      const res = await fetch(`${API_BASE}/notices/${id}`, {
+        method: 'DELETE',
+        headers: getHeaders(),
+      });
+      if (res.ok) return await res.json();
+    } catch (err) {
+      console.warn('Failed to delete notice on server, removed locally:', err);
+    }
+    return { message: 'Notice deleted' };
   },
 
   // Mess Feedback

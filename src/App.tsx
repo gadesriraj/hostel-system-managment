@@ -116,9 +116,15 @@ function MainApp() {
 
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
           <DashboardErrorBoundary>
-            {user.role === 'student' && <StudentDashboard activeTab={activeTab} />}
-            {user.role === 'warden' && <WardenDashboard activeTab={activeTab} />}
-            {user.role === 'staff' && <StaffDashboard activeTab={activeTab} />}
+            {user.role === 'student' && (
+              <StudentDashboard activeTab={activeTab} onSelectTab={setActiveTab} />
+            )}
+            {user.role === 'warden' && (
+              <WardenDashboard activeTab={activeTab} onSelectTab={setActiveTab} />
+            )}
+            {user.role === 'staff' && (
+              <StaffDashboard activeTab={activeTab} onSelectTab={setActiveTab} />
+            )}
           </DashboardErrorBoundary>
         </main>
       </div>
